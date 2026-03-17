@@ -14,6 +14,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.filled.Delete
 import com.example.printedit.data.SettingsRepository
 import com.example.printedit.data.PresetRepository
@@ -247,9 +249,10 @@ fun PresetManagerDialog(
                                             .heightIn(max = 120.dp)
                                             .background(MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.small)
                                             .padding(8.dp)
+                                            .verticalScroll(rememberScrollState())
                                     ) {
-                                        LazyColumn {
-                                            items(preset.selectors) { sel ->
+                                        Column {
+                                            preset.selectors.forEach { sel ->
                                                 Text(sel, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, lineHeight = 14.sp)
                                             }
                                         }

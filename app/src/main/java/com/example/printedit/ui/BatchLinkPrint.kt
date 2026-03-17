@@ -6,6 +6,7 @@ import android.os.CancellationSignal
 import android.os.ParcelFileDescriptor
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.provider.DocumentsContract
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -133,6 +134,8 @@ fun BatchLinkPrintDialog(
     var isTextOnly by remember { mutableStateOf(presetSettings.first) }
     var isGrayscale by remember { mutableStateOf(presetSettings.second) }
     var isRemoveBackground by remember { mutableStateOf(presetSettings.third) }
+    var isAdsRemoved by remember { mutableStateOf(false) }
+    var isImageAdjusted by remember { mutableStateOf(false) }
     
     // Load Presets
     LaunchedEffect(Unit) {
@@ -151,47 +154,65 @@ fun BatchLinkPrintDialog(
     val targetLinks = remember(isGenerating) { links.filter { it.selected.value } }
     var currentLinkIndex by remember { mutableStateOf(0) }
 
-    val createDocumentLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("application/pdf"),
+    var selectedFolderUri by remember { mutableStateOf<android.net.Uri?>(null) }
+    
+    val folderPickLauncher = rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.OpenDocumentTree(),
         onResult = { uri ->
-            if (uri != null && webViewInstance != null) {
-                statusMessage = "PDFを生成・保存中..."
-                coroutineScope.launch {
-                   val success = saveWebViewAsPdfToTarget(context, webViewInstance!!, uri)
-                   if (success) {
-                       val nextIndex = currentLinkIndex + 1
-                       if (nextIndex < targetLinks.size) {
-                           currentLinkIndex = nextIndex
-                           progress = nextIndex
-                           statusMessage = "${nextIndex + 1} / $total ページ目を処理中: ${targetLinks[nextIndex].text}"
-                       } else {
-                           Toast.makeText(context, "すべてのPDFの保存が完了しました！", Toast.LENGTH_LONG).show()
-                           onDismiss() // All done
-                       }
-                   } else {
-                       Toast.makeText(context, "PDF保存に失敗しました", Toast.LENGTH_SHORT).show()
-                       onDismiss()
-                   }
-                }
-            } else if (uri == null) {
-                Toast.makeText(context, "保存がキャンセルされました", Toast.LENGTH_SHORT).show()
-                val nextIndex = currentLinkIndex + 1
-                if (nextIndex < targetLinks.size) {
-                    currentLinkIndex = nextIndex
-                    progress = nextIndex
-                    statusMessage = "${nextIndex + 1} / $total ページ目を処理中: ${targetLinks[nextIndex].text}"
-                } else {
-                    Toast.makeText(context, "処理が完了しました", Toast.LENGTH_SHORT).show()
-                    onDismiss()
-                }
+            if (uri != null) {
+                // We got the folder!
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                )
+                selectedFolderUri = uri
+                isGenerating = true
+                currentLinkIndex = 0
+            } else {
+                Toast.makeText(context, "フォルダ選択がキャンセルされました", Toast.LENGTH_SHORT).show()
+                isGenerating = false
             }
         }
     )
 
     LaunchedEffect(pendingSaveTitle) {
-        pendingSaveTitle?.let { title ->
-            createDocumentLauncher.launch(title)
-            pendingSaveTitle = null
+        val title = pendingSaveTitle
+        val folderUri = selectedFolderUri
+        if (title != null && folderUri != null && webViewInstance != null) {
+            statusMessage = "PDFを保存中: $title..."
+            coroutineScope.launch {
+                try {
+                    val docId = DocumentsContract.getTreeDocumentId(folderUri)
+                    val dirUri = DocumentsContract.buildDocumentUriUsingTree(folderUri, docId)
+                    val newFileUri = DocumentsContract.createDocument(context.contentResolver, dirUri, "application/pdf", title)
+                    
+                    if (newFileUri != null) {
+                        val success = saveWebViewAsPdfToTarget(context, webViewInstance!!, newFileUri)
+                        if (success) {
+                            val nextIndex = currentLinkIndex + 1
+                            if (nextIndex < targetLinks.size) {
+                                currentLinkIndex = nextIndex
+                                progress = nextIndex
+                                statusMessage = "${nextIndex + 1} / $total ページ目を処理中: ${targetLinks[nextIndex].text}"
+                            } else {
+                                Toast.makeText(context, "すべてのPDFの保存が完了しました！", Toast.LENGTH_LONG).show()
+                                onDismiss() // All done
+                            }
+                        } else {
+                            Toast.makeText(context, "保存失敗: $title", Toast.LENGTH_SHORT).show()
+                            currentLinkIndex++
+                        }
+                    } else {
+                        Toast.makeText(context, "ファイル作成失敗: $title", Toast.LENGTH_SHORT).show()
+                        currentLinkIndex++
+                    }
+                } catch (e: Exception) {
+                    Toast.makeText(context, "エラーが発生しました: ${e.message}", Toast.LENGTH_SHORT).show()
+                    currentLinkIndex++
+                } finally {
+                    pendingSaveTitle = null
+                }
+            }
         }
     }
 
@@ -222,18 +243,12 @@ fun BatchLinkPrintDialog(
             }
         }
 
-        // URL の読み込みを LaunchedEffect で制御（update ラムダのリダイレクト問題を回避）
+        // Bug #4 fix: WebView の再利用 — destroy せず loadUrl で次ページを読み込む
         LaunchedEffect(currentLinkIndex, webViewInstance) {
             if (webViewInstance != null && currentLinkIndex < targetLinks.size && loadedUrlForIndex != currentLinkIndex) {
                 loadedUrlForIndex = currentLinkIndex
                 webViewInstance?.loadUrl(targetLinks[currentLinkIndex].url)
             }
-        }
-
-        // ensure previous WebView is destroyed when index changes to free memory
-        LaunchedEffect(currentLinkIndex) {
-            webViewInstance?.destroy()
-            webViewInstance = null
         }
 
         AndroidView(
@@ -248,9 +263,12 @@ fun BatchLinkPrintDialog(
                     addJavascriptInterface(PrintReadyInterface {
                         // This indicates images are ready and WebView finished rendering
                         isWaitingForImages = false
-                        statusMessage = "保存先を選択..."
-                        val title = targetLinks[currentLinkIndex].text.take(30).replace(Regex("[\\\\/:*?\"<>|]"), "-")
-                        pendingSaveTitle = "PrintEdit_${title}.pdf"
+                        statusMessage = "保存先を準備中..."
+                        var baseTitle = targetLinks[currentLinkIndex].text.take(30).replace(Regex("[\\\\/:*?\"<>|]"), "-").trim()
+                        if (baseTitle.isEmpty()) {
+                            baseTitle = "Document_${currentLinkIndex + 1}"
+                        }
+                        pendingSaveTitle = "PrintEdit_${baseTitle}.pdf"
                     }, "AndroidPrint")
                     
                     webViewClient = object : WebViewClient() {
@@ -262,6 +280,7 @@ fun BatchLinkPrintDialog(
                             jsDefs.append(toggleGrayscaleJs)
                             jsDefs.append(toggleNoBackgroundJs)
                             jsDefs.append(removeAdsJs)
+                            jsDefs.append(toggleRemoveElementModeJs)
                             view?.evaluateJavascript(jsDefs.toString(), null)
                             
                             // 2. Then call the toggle functions with the preset values
@@ -269,7 +288,17 @@ fun BatchLinkPrintDialog(
                             if (isTextOnly) jsCalls.append("if(window.toggleTextOnly) window.toggleTextOnly(true);")
                             if (isGrayscale) jsCalls.append("if(window.toggleGrayscale) window.toggleGrayscale(true);")
                             if (isRemoveBackground) jsCalls.append("if(window.toggleNoBackground) window.toggleNoBackground(true);")
-                            jsCalls.append("if(window.peManualRemoveAds) window.peManualRemoveAds();")
+                            // Bug #6 fix: 広告削除はフラグに基づいて条件実行
+                            if (isAdsRemoved) jsCalls.append("if(window.peManualRemoveAds) window.peManualRemoveAds();")
+                            
+                            // Bug #10 fix: Apply selectors from chosen preset
+                            presets.firstOrNull { it.name == selectedPresetName }?.let { preset ->
+                                if (preset.selectors.isNotEmpty()) {
+                                    val selectorsJson = org.json.JSONArray(preset.selectors).toString()
+                                    val escapedJson = selectorsJson.replace("'", "\\'")
+                                    jsCalls.append("if(window.peApplyRemovedSelectors) window.peApplyRemovedSelectors('${escapedJson}');")
+                                }
+                            }
                             
                             view?.evaluateJavascript(jsCalls.toString(), null)
                             
@@ -396,6 +425,9 @@ fun BatchLinkPrintDialog(
                                         isTextOnly = preset.textOnly
                                         isGrayscale = preset.grayscale
                                         isRemoveBackground = preset.removeBackground
+                                        // Bug #7 fix: adsRemoved, imageAdjusted も反映
+                                        isAdsRemoved = preset.adsRemoved
+                                        isImageAdjusted = preset.imageAdjusted
                                     },
                                     label = { Text(preset.name) },
                                     leadingIcon = { Icon(Icons.Filled.Settings, null, Modifier.size(16.dp)) }
@@ -438,10 +470,10 @@ fun BatchLinkPrintDialog(
             },
             confirmButton = {
                 Button(
-                    onClick = { isGenerating = true },
-                    enabled = links.any { it.selected.value }
+                    onClick = { folderPickLauncher.launch(null) },
+                    enabled = links.any { it.selected.value } && !isGenerating // Prevent double click
                 ) {
-                    Text("PDF作成開始")
+                    Text("フォルダを選択して作成開始")
                 }
             },
             dismissButton = {

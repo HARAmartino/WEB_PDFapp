@@ -761,8 +761,6 @@ val marqueeSelectionJs = """
             if (!href || href.startsWith('javascript:') || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:')) return;
             try { 
                 var parsed = new URL(href);
-                var pathParts = parsed.pathname.split('/').filter(function(p) { return p.length > 0; });
-                if (pathParts.length < 1) return;
             } catch(e) {}
             
             // Ignore invisible wrappers

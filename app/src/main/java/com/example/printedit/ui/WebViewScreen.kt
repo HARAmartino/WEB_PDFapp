@@ -90,9 +90,6 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
         }
     }
 
-    if (showSettings) {
-        SettingsScreen(onNavigateBack = { showSettings = false })
-    } else {
         Box(modifier = Modifier.fillMaxSize()) {
             Scaffold(
                 topBar = {
@@ -121,6 +118,11 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                         } else {
                             CenterAlignedTopAppBar(
                                 title = { Text("PrintEdit - Browser") },
+                                navigationIcon = {
+                                    IconButton(onClick = onExit) {
+                                        Icon(Icons.Filled.Home, contentDescription = "Home")
+                                    }
+                                },
                                 actions = {
                                     IconButton(onClick = { webViewRef?.reload() }) {
                                         Icon(Icons.Filled.Refresh, contentDescription = "Reload")
@@ -188,6 +190,8 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                                     }
                                     transport.webView = tempWebView
                                     resultMsg.sendToTarget()
+                                    // タイムアウト: shouldOverrideUrlLoading が呼ばれなかった場合のリーク防止
+                                    view.postDelayed({ try { tempWebView.destroy() } catch (_: Exception) {} }, 10000)
                                     return true
                                 }
                             }
@@ -196,6 +200,8 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                                 override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
                                     super.onPageStarted(view, url, favicon)
                                     isFabExpanded = false
+                                    // Bug #2 fix: リロード時にもJSが再注入されるようリセット
+                                    lastInjectedUrl = null
                                 }
 
                                 override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
@@ -217,7 +223,7 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                                     super.onPageFinished(view, url)
                                     // SPA 対応: ページ遷移時に注入フラグをリセット
                                     view?.evaluateJavascript("delete window.injected_GizmodoUtils; delete window.injected_MarqueeSelection; delete window.injected_RemoveElement;", null)
-                                    // Inject Core Functionality only if URL changed to avoid redundant injections
+                                    // Inject Core Functionality (lastInjectedUrl は onPageStarted でリセット済み)
                                     if (url != lastInjectedUrl) {
                                         safeInjectJs(view, "GizmodoUtils", removeAdsJs + toggleTextOnlyJs + toggleGrayscaleJs + toggleNoBackgroundJs) 
                                         safeInjectJs(view, "MarqueeSelection", marqueeSelectionJs)
@@ -226,9 +232,9 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                                     }
                                     
                                     // Reset modes
-                                    view?.evaluateJavascript("if(window.toggleTextOnly) window.toggleTextOnly(\${isTextOnly});", null)
-                                    view?.evaluateJavascript("if(window.toggleGrayscale) window.toggleGrayscale(\${isGrayscale});", null)
-                                    view?.evaluateJavascript("if(window.toggleNoBackground) window.toggleNoBackground(\${isNoBackground});", null)
+                                    view?.evaluateJavascript("if(window.toggleTextOnly) window.toggleTextOnly($isTextOnly);", null)
+                                    view?.evaluateJavascript("if(window.toggleGrayscale) window.toggleGrayscale($isGrayscale);", null)
+                                    view?.evaluateJavascript("if(window.toggleNoBackground) window.toggleNoBackground($isNoBackground);", null)
                                     // Auto-apply settings-based features
                                     if (settingsRepository.aggressiveAdBlock) {
                                         view?.evaluateJavascript("if(window.peManualRemoveAds) window.peManualRemoveAds();", null)
@@ -447,9 +453,10 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                                                 isAdsRemoved = preset.adsRemoved
                                                 isImageAdjusted = preset.imageAdjusted
 
-                                                webViewRef?.evaluateJavascript("if(window.toggleTextOnly) window.toggleTextOnly($isTextOnly);", null)
-                                                webViewRef?.evaluateJavascript("if(window.toggleGrayscale) window.toggleGrayscale($isGrayscale);", null)
-                                                webViewRef?.evaluateJavascript("if(window.toggleNoBackground) window.toggleNoBackground($isNoBackground);", null)
+                                                // Bug #3 fix: preset の値を直接使用（Compose state は recomposition 後に反映されるため）
+                                                webViewRef?.evaluateJavascript("if(window.toggleTextOnly) window.toggleTextOnly(${preset.textOnly});", null)
+                                                webViewRef?.evaluateJavascript("if(window.toggleGrayscale) window.toggleGrayscale(${preset.grayscale});", null)
+                                                webViewRef?.evaluateJavascript("if(window.toggleNoBackground) window.toggleNoBackground(${preset.removeBackground});", null)
                                                 if (preset.adsRemoved) {
                                                     webViewRef?.evaluateJavascript("if(window.peManualRemoveAds) window.peManualRemoveAds();", null)
                                                 }
@@ -678,8 +685,12 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                     contentDescription = "Menu"
                 )
             }
+
+            // Settings overlay — rendered on top of browser so WebView is never destroyed
+            if (showSettings) {
+                SettingsScreen(onNavigateBack = { showSettings = false })
+            }
         }
-    }
 }
 
 @Composable

@@ -47,13 +47,13 @@ fun HomeScreen(
     var savedUrls by remember { mutableStateOf(savedUrlRepo.getAll()) }
 
     Scaffold(
-        containerColor = Color(0xFF202124),
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = { },
                 actions = {
                     IconButton(onClick = onOpenSettings) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings", tint = Color.LightGray)
+                        Icon(Icons.Default.Settings, contentDescription = "Settings", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
@@ -75,7 +75,7 @@ fun HomeScreen(
                     .padding(horizontal = 16.dp)
                     .height(56.dp),
                 shape = RoundedCornerShape(28.dp),
-                color = Color(0xFF303134)
+                color = MaterialTheme.colorScheme.surfaceVariant
             ) {
                 Row(
                     modifier = Modifier
@@ -86,7 +86,7 @@ fun HomeScreen(
                     Icon(
                         imageVector = Icons.Default.Search,
                         contentDescription = "Search",
-                        tint = Color(0xFF9AA0A6),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(12.dp))
@@ -95,8 +95,8 @@ fun HomeScreen(
                         onValueChange = { searchText = it },
                         modifier = Modifier.weight(1f),
                         singleLine = true,
-                        textStyle = TextStyle(color = Color.White, fontSize = 16.sp),
-                        cursorBrush = SolidColor(Color.White),
+                        textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp),
+                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                         keyboardActions = KeyboardActions(
                             onSearch = {
@@ -114,7 +114,7 @@ fun HomeScreen(
                         ),
                         decorationBox = { innerTextField ->
                             if (searchText.isEmpty()) {
-                                Text("検索、またはURLを入力", color = Color(0xFF9AA0A6), fontSize = 16.sp)
+                                Text("検索、またはURLを入力", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f), fontSize = 16.sp)
                             }
                             innerTextField()
                         }
@@ -135,7 +135,7 @@ fun HomeScreen(
                 ) {
                     Text(
                         text = "📌 印刷待ち (${savedUrls.size}件)",
-                        color = Color(0xFFE8EAED),
+                        color = MaterialTheme.colorScheme.onBackground,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -144,7 +144,7 @@ fun HomeScreen(
                             savedUrlRepo.deleteAll()
                             savedUrls = savedUrlRepo.getAll()
                         }) {
-                            Text("すべて削除", color = Color(0xFF8AB4F8), fontSize = 12.sp)
+                            Text("すべて削除", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
                         }
                     }
                 }
@@ -170,7 +170,7 @@ fun HomeScreen(
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp),
-                            color = Color(0xFF303134)
+                            color = MaterialTheme.colorScheme.surfaceVariant
                         ) {
                             Row(
                                 modifier = Modifier
@@ -183,7 +183,7 @@ fun HomeScreen(
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = savedUrl.title.ifBlank { "無題" },
-                                        color = Color(0xFFE8EAED),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         fontSize = 14.sp,
                                         fontWeight = FontWeight.Medium,
                                         maxLines = 2,
@@ -198,7 +198,7 @@ fun HomeScreen(
                                             text = try {
                                                 Uri.parse(savedUrl.url).host ?: savedUrl.url
                                             } catch (_: Exception) { savedUrl.url },
-                                            color = Color(0xFF9AA0A6),
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                             fontSize = 12.sp,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis,
@@ -207,7 +207,7 @@ fun HomeScreen(
                                         if (dateStr.isNotEmpty()) {
                                             Text(
                                                 text = dateStr,
-                                                color = Color(0xFF5F6368),
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                                                 fontSize = 11.sp
                                             )
                                         }
@@ -225,7 +225,7 @@ fun HomeScreen(
                                     Icon(
                                         Icons.Default.Delete,
                                         contentDescription = "削除",
-                                        tint = Color(0xFF5F6368),
+                                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f),
                                         modifier = Modifier.size(18.dp)
                                     )
                                 }
