@@ -1,0 +1,32 @@
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# Build logs and temporary files
+build_*.txt
+build_*.log
+*.log
+output*.txt
+compile*.txt
+error_log.txt
+capture.log
+
+# Temporary scripts and HTML dumps
+*.py
+*.html
+*_links.txt
+
+# IDE-specific lock files
+app/build_locked/
