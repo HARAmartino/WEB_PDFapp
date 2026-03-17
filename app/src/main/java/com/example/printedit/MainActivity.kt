@@ -23,7 +23,6 @@ sealed class Screen {
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        WebView.enableSlowWholeDocumentDraw()
         super.onCreate(savedInstanceState)
         setContent {
             PrintEditTheme {

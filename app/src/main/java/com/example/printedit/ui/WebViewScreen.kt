@@ -58,8 +58,8 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
     var isFabExpanded by remember { mutableStateOf(false) }
     var pageLoadProgress by remember { mutableStateOf(100) }
     
-    // Settings State
-    val menuActions by remember { mutableStateOf(settingsRepository.menuActions) }
+    // Settings State — read directly from repository so settings changes are reflected immediately
+    val menuActions = settingsRepository.menuActions
     
     // Feature Toggles (State for JS)
     var isTextOnly by remember { mutableStateOf(false) }
@@ -144,8 +144,13 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                         WebView(ctx).apply {
                             settings.javaScriptEnabled = true
                             settings.domStorageEnabled = true
+                            settings.databaseEnabled = true
                             settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
                             settings.setSupportMultipleWindows(true)
+                            settings.cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
+                            settings.loadsImagesAutomatically = true
+                            settings.useWideViewPort = true
+                            settings.loadWithOverviewMode = true
                             
                             // Desktop Mode: Switch UserAgent based on setting
                             settings.userAgentString = if (settingsRepository.desktopMode) {
@@ -155,11 +160,6 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                             }
                             
                             webChromeClient = object : WebChromeClient() {
-                                override fun onConsoleMessage(message: ConsoleMessage?): Boolean {
-                                    Log.d("PrintEdit_JS", "${message?.message()} -- line ${message?.lineNumber()}")
-                                    return true
-                                }
-                                
                                 override fun onProgressChanged(view: WebView?, newProgress: Int) {
                                     super.onProgressChanged(view, newProgress)
                                     pageLoadProgress = newProgress
@@ -193,6 +193,11 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                             }
                             
                             webViewClient = object : WebViewClient() {
+                                override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+                                    super.onPageStarted(view, url, favicon)
+                                    isFabExpanded = false
+                                }
+
                                 override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                                     val requestUrl = request?.url?.toString() ?: return false
                                     if (requestUrl.startsWith("http://") || requestUrl.startsWith("https://")) {

@@ -851,20 +851,58 @@ window.toggleNoBackground = function(enable) {
 };
 """.trimIndent()
 
-// 8. Menu Fix JS - Fixes sites where menus are clipped, without forcing them open permanently
+// 8. Menu Fix JS - Fixes semi-transparent menus, overflow clipping, and SPA menu resets
 val menuFixJs = """
 (function() {
-    console.log('PrintEdit: Applying safe menu fix...');
-    var style = document.createElement('style');
-    style.id = 'pe-menu-fix-style';
-    style.innerHTML = 
-        '/* Smooth scrolling for touch */' +
-        'html, body { -webkit-overflow-scrolling: touch !important; }' +
-        '/* Fix header clipping without forcing visibility */' +
-        'header, nav, .navbar { overflow: visible !important; }';
-    
-    if (!document.getElementById('pe-menu-fix-style')) {
-        document.head.appendChild(style);
+    var STYLE_ID = 'pe-menu-fix-style';
+    if (!document.getElementById(STYLE_ID)) {
+        var style = document.createElement('style');
+        style.id = STYLE_ID;
+        style.textContent =
+            'html, body { -webkit-overflow-scrolling: touch !important; }\n' +
+            'header, nav, .navbar, [role="navigation"] { overflow: visible !important; }\n' +
+            /* Force full opacity on common nav/menu/overlay patterns */
+            'header, nav, [role="navigation"], [role="menu"], [role="menubar"],\n' +
+            '[class*="nav-"], [class*="-nav"], [class*="menu-"], [class*="-menu"],\n' +
+            '[class*="drawer"], [class*="sidebar"], [class*="header"],\n' +
+            '[class*="gnav"], [class*="global-nav"], [class*="site-nav"] {\n' +
+            '    opacity: 1 !important;\n' +
+            '}';
+        (document.head || document.documentElement).appendChild(style);
     }
+
+    /* Fix semi-transparent background-color on fixed/sticky menu elements */
+    function fixTransparentMenus() {
+        try {
+            var sel = 'header, nav, [role="navigation"], [role="menu"],' +
+                '[class*="nav-"], [class*="-nav"], [class*="menu-"], [class*="-menu"],' +
+                '[class*="drawer"], [class*="sidebar"], [class*="gnav"]';
+            document.querySelectorAll(sel).forEach(function(el) {
+                var cs = window.getComputedStyle(el);
+                var bg = cs.backgroundColor;
+                if (bg && bg.indexOf('rgba') !== -1) {
+                    var m = bg.match(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/);
+                    /* Only solidify if alpha is meaningful (>0.3) to keep invisible helpers intact */
+                    if (m && parseFloat(m[4]) > 0.3 && parseFloat(m[4]) < 1) {
+                        el.style.backgroundColor = 'rgb(' + m[1] + ',' + m[2] + ',' + m[3] + ')';
+                    }
+                }
+            });
+        } catch(e) {}
+    }
+    fixTransparentMenus();
+
+    /* MutationObserver: watch only <head> direct children to re-prioritize our style
+       (avoids expensive subtree observation on the entire document) */
+    if (typeof MutationObserver !== 'undefined' && document.head) {
+        new MutationObserver(function() {
+            var s = document.getElementById(STYLE_ID);
+            if (s && document.head.lastElementChild !== s) {
+                document.head.appendChild(s);
+            }
+        }).observe(document.head, { childList: true });
+    }
+    /* Re-run background fix once after page settles (for lazy-loaded menus) */
+    setTimeout(fixTransparentMenus, 800);
 })();
 """.trimIndent()
