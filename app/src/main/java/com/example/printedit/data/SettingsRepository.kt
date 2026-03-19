@@ -46,4 +46,14 @@ class SettingsRepository(context: Context) {
     var menuActions: Set<String>
         get() = prefs.getStringSet(KEY_MENU_ACTIONS, defaultMenuActions) ?: defaultMenuActions
         set(value) = prefs.edit().putStringSet(KEY_MENU_ACTIONS, value).apply()
+
+    // PDF Batch Save Destination (null = default Downloads/PrintEdit)
+    private val KEY_CUSTOM_SAVE_URI = "custom_save_uri"
+
+    var customSaveUri: String?
+        get() = prefs.getString(KEY_CUSTOM_SAVE_URI, null)
+        set(value) {
+            if (value == null) prefs.edit().remove(KEY_CUSTOM_SAVE_URI).apply()
+            else prefs.edit().putString(KEY_CUSTOM_SAVE_URI, value).apply()
+        }
 }

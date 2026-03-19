@@ -62,6 +62,7 @@ dependencies {
     implementation(libs.androidx.material.icons.extended) // Added for Extended Icons
     implementation(libs.material)
     implementation(libs.androidx.appcompat)
+    implementation(libs.play.services.ads)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

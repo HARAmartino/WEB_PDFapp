@@ -5,7 +5,20 @@ package com.example.printedit.ui
 // 1. Remove Ads (Generic + Gizmodo specific)
 // 1. Remove Ads (Manual Trigger Only)
 val removeAdsJs = """
-window.peManualRemoveAds = function() {
+window.peToggleRemoveAds = function(enable) {
+    if (!enable) {
+        console.log("PrintEdit: Stopping Ad Removal...");
+        if (window._peAdObserver) {
+            window._peAdObserver.disconnect();
+            window._peAdObserver = null;
+        }
+        if (window._peAdInterval) {
+            clearInterval(window._peAdInterval);
+            window._peAdInterval = null;
+        }
+        return;
+    }
+    
     console.log("PrintEdit: Persistently Removing Ads...");
     var selectors = [
         '.google-auto-placed', 
@@ -869,23 +882,60 @@ val menuFixJs = """
         (document.head || document.documentElement).appendChild(style);
     }
 
-    /* Fix semi-transparent background-color on fixed/sticky menu elements */
+    /* Advanced heuristic for transparent thick menus and overlays */
     function fixTransparentMenus() {
         try {
-            var sel = 'header, nav, [role="navigation"], [role="menu"],' +
-                '[class*="nav-"], [class*="-nav"], [class*="menu-"], [class*="-menu"],' +
-                '[class*="drawer"], [class*="sidebar"], [class*="gnav"],' +
-                '.overlay, [class*="overlay"]';
+            var sel = 'header, nav, [role="navigation"], [role="menu"], [role="dialog"],' +
+                '[class*="nav"], [class*="menu"], [class*="drawer"], [class*="sidebar"], ' +
+                '[class*="gnav"], [class*="overlay"], [class*="modal"], [class*="popup"], [id*="menu"]';
+            
             document.querySelectorAll(sel).forEach(function(el) {
                 var cs = window.getComputedStyle(el);
                 var bg = cs.backgroundColor;
+                var bf = cs.backdropFilter || cs.webkitBackdropFilter;
+                var hasBackdropBlur = (bf && bf !== 'none' && bf.indexOf('blur') !== -1);
+                
+                var isTranslucent = false;
+                var r=255, g=255, b=255; // Default solid fallback
+                
                 if (bg && bg.indexOf('rgba') !== -1) {
                     var m = bg.match(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/);
                     if (m) {
                         var alpha = parseFloat(m[4]);
-                        /* Solidify translucent layers for readability */
-                        if (alpha > 0.05 && alpha < 0.98) {
-                            el.style.setProperty('background-color', 'rgb(' + m[1] + ',' + m[2] + ',' + m[3] + ')', 'important');
+                        r = m[1]; g = m[2]; b = m[3];
+                        if ((alpha > 0.01 && alpha < 0.98) || (alpha === 0 && hasBackdropBlur)) {
+                            isTranslucent = true;
+                        }
+                    }
+                }
+                
+                if (hasBackdropBlur || isTranslucent) {
+                    var pos = cs.position;
+                    if (pos === 'fixed' || pos === 'absolute' || pos === 'sticky' || el.tagName.toLowerCase() === 'nav' || el.tagName.toLowerCase() === 'header') {
+                        el.style.setProperty('background-color', 'rgb(' + r + ',' + g + ',' + b + ')', 'important');
+                        el.style.setProperty('backdrop-filter', 'none', 'important');
+                        el.style.setProperty('-webkit-backdrop-filter', 'none', 'important');
+                    }
+                }
+            });
+            
+            // Second pass: Find ANY element covering the whole screen (width > 80vw, height > 80vh) that is position: fixed and translucent
+            var ww = window.innerWidth;
+            var wh = window.innerHeight;
+            document.querySelectorAll('div, section, aside, form').forEach(function(el) {
+                var cs = window.getComputedStyle(el);
+                if (cs.position === 'fixed' || cs.position === 'absolute') {
+                    if (el.offsetWidth > ww * 0.8 && el.offsetHeight > wh * 0.8) {
+                        var bg = cs.backgroundColor;
+                        var m = bg ? bg.match(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/) : null;
+                        var alpha = m ? parseFloat(m[4]) : 1;
+                        var bf = cs.backdropFilter || cs.webkitBackdropFilter;
+                        
+                        if ((alpha > 0.05 && alpha < 0.98) || (bf && bf !== 'none')) {
+                            var r = m ? m[1] : 255;
+                            var g = m ? m[2] : 255;
+                            var b = m ? m[3] : 255;
+                            el.style.setProperty('background-color', 'rgb(' + r + ',' + g + ',' + b + ')', 'important');
                             el.style.setProperty('backdrop-filter', 'none', 'important');
                             el.style.setProperty('-webkit-backdrop-filter', 'none', 'important');
                         }

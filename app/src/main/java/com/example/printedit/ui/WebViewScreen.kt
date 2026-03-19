@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.activity.compose.BackHandler
 import androidx.compose.material3.ListItem
+import com.example.printedit.AdManager
 import com.example.printedit.data.SettingsRepository
 import com.example.printedit.data.PresetRepository
 import com.example.printedit.data.SavedUrlRepository
@@ -65,7 +66,7 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
     var isTextOnly by remember { mutableStateOf(false) }
     var isGrayscale by remember { mutableStateOf(false) }
     var isNoBackground by remember { mutableStateOf(false) }
-    var isAdsRemoved by remember { mutableStateOf(false) }
+    var isAdsRemoved by remember { mutableStateOf(settingsRepository.aggressiveAdBlock) }
     var isImageAdjusted by remember { mutableStateOf(false) }
     var isRemoveElementMode by remember { mutableStateOf(false) }
 
@@ -239,8 +240,8 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                                     view?.evaluateJavascript("if(window.toggleGrayscale) window.toggleGrayscale($isGrayscale);", null)
                                     view?.evaluateJavascript("if(window.toggleNoBackground) window.toggleNoBackground($isNoBackground);", null)
                                     // Auto-apply settings-based features
-                                    if (settingsRepository.aggressiveAdBlock) {
-                                        view?.evaluateJavascript("if(window.peManualRemoveAds) window.peManualRemoveAds();", null)
+                                    if (isAdsRemoved) {
+                                        view?.evaluateJavascript("if(window.peToggleRemoveAds) window.peToggleRemoveAds(true);", null)
                                     }
                                     if (settingsRepository.autoImageAdjust) {
                                         view?.evaluateJavascript(smartFitImagesJs, null)
@@ -461,7 +462,7 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                                                 webViewRef?.evaluateJavascript("if(window.toggleGrayscale) window.toggleGrayscale(${preset.grayscale});", null)
                                                 webViewRef?.evaluateJavascript("if(window.toggleNoBackground) window.toggleNoBackground(${preset.removeBackground});", null)
                                                 if (preset.adsRemoved) {
-                                                    webViewRef?.evaluateJavascript("if(window.peManualRemoveAds) window.peManualRemoveAds();", null)
+                                                    webViewRef?.evaluateJavascript("if(window.peToggleRemoveAds) window.peToggleRemoveAds(true);", null)
                                                 }
                                                 if (preset.imageAdjusted) {
                                                     webViewRef?.evaluateJavascript(smartFitImagesJs, null)
@@ -521,14 +522,23 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                     // 印刷
                     MiniFabItem(icon = Icons.Filled.Print, label = "印刷") {
                         isFabExpanded = false
-                        val printManager = context.getSystemService(Context.PRINT_SERVICE) as? android.print.PrintManager
-                        val adapter = webViewRef?.createPrintDocumentAdapter("PrintEdit_Page")
-                        if (printManager != null && adapter != null) {
-                            val printAttributes = android.print.PrintAttributes.Builder()
-                                .setMediaSize(android.print.PrintAttributes.MediaSize.ISO_A4)
-                                .setMinMargins(android.print.PrintAttributes.Margins.NO_MARGINS)
-                                .build()
-                            printManager.print("PrintEdit_Page", adapter, printAttributes)
+                        val activity = context as? android.app.Activity
+                        val doPrint = {
+                            val printManager = context.getSystemService(Context.PRINT_SERVICE) as? android.print.PrintManager
+                            val adapter = webViewRef?.createPrintDocumentAdapter("PrintEdit_Page")
+                            if (printManager != null && adapter != null) {
+                                val printAttributes = android.print.PrintAttributes.Builder()
+                                    .setMediaSize(android.print.PrintAttributes.MediaSize.ISO_A4)
+                                    .setMinMargins(android.print.PrintAttributes.Margins.NO_MARGINS)
+                                    .build()
+                                printManager.print("PrintEdit_Page", adapter, printAttributes)
+                            }
+                        }
+                        // 広告が準備できていれば全画面広告を表示してから印刷ダイアログを開く
+                        if (activity != null) {
+                            AdManager.showAdIfAvailable(activity, doPrint)
+                        } else {
+                            doPrint()
                         }
                     }
                     
@@ -546,13 +556,21 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                         }
                     }
 
-                    // 広告削除
+                    // 広告削除 (Toggle)
                     if (menuActions.contains("action_remove_ads")) {
-                        MiniFabItem(icon = Icons.Filled.Delete, label = "広告削除") {
+                        val adLabel = if (isAdsRemoved) "広告削除を停止" else "広告削除"
+                        val adIcon = if (isAdsRemoved) Icons.Filled.Block else Icons.Filled.Delete
+                        MiniFabItem(icon = adIcon, label = adLabel) {
                             isFabExpanded = false
-                            isAdsRemoved = true
-                            webViewRef?.evaluateJavascript("if(window.peManualRemoveAds) window.peManualRemoveAds();", null)
-                            Toast.makeText(context, "広告削除を実行しました", Toast.LENGTH_SHORT).show()
+                            isAdsRemoved = !isAdsRemoved
+                            if (isAdsRemoved) {
+                                webViewRef?.evaluateJavascript("if(window.peToggleRemoveAds) window.peToggleRemoveAds(true);", null)
+                                Toast.makeText(context, "広告削除を有効にしました", Toast.LENGTH_SHORT).show()
+                            } else {
+                                webViewRef?.evaluateJavascript("if(window.peToggleRemoveAds) window.peToggleRemoveAds(false);", null)
+                                Toast.makeText(context, "広告削除を停止しました（再読込します）", Toast.LENGTH_SHORT).show()
+                                webViewRef?.reload()
+                            }
                         }
                     }
                     

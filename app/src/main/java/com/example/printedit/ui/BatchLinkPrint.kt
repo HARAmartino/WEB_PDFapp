@@ -1,36 +1,35 @@
 package com.example.printedit.ui
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.net.Uri
-import android.os.CancellationSignal
-import android.os.ParcelFileDescriptor
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.provider.DocumentsContract
 import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
 import com.example.printedit.data.Preset
 import com.example.printedit.data.PresetRepository
+import com.example.printedit.data.SettingsRepository
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONArray
 import android.util.Log
+import androidx.compose.runtime.snapshotFlow
 
 class LinkItem(val url: String, val text: String, val selected: MutableState<Boolean>)
 
@@ -39,14 +38,14 @@ val getLinksInSelectionJs = """
         var sel = window.getSelection();
         if (sel.rangeCount == 0) return JSON.stringify([]);
         var range = sel.getRangeAt(0);
-        
+
         // Ensure range represents a visible selection
         var selRects = range.getClientRects();
         if (selRects.length === 0) return JSON.stringify([]);
 
         var container = range.commonAncestorContainer;
         if (container.nodeType == 3) container = container.parentNode;
-        
+
         // Expand the container slightly up just in case the selection edges are overlapping parent boundaries
         if (container.parentElement) container = container.parentElement;
 
@@ -62,7 +61,7 @@ val getLinksInSelectionJs = """
         for (var i=0; i<links.length; i++) {
             var link = links[i];
             var isSelected = false;
-            
+
             // Check absolute geometric bounds instead of buggy DOM containsNode
             var linkRects = link.getClientRects();
             for (var j=0; j<linkRects.length; j++) {
@@ -74,27 +73,27 @@ val getLinksInSelectionJs = """
                 }
                 if (isSelected) break;
             }
-            
+
             if (isSelected || sel.containsNode(link, false)) { // If it physically intersects OR is completely enclosed
                 var href = link.href;
                 var text = link.innerText.trim();
-                
+
                 if (!href || href.startsWith('javascript:') || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:')) continue;
                 if (!text || text.length === 0) continue;
-                
+
                 // Parse URL
                 try { var parsed = new URL(href); } catch(e) { continue; }
-                
+
                 // Skip root-only URLs (no meaningful path)
                 var pathParts = parsed.pathname.split('/').filter(function(p) { return p.length > 0; });
                 if (pathParts.length < 1) continue;
-                
+
                 if (!resultMap[href] || resultMap[href].length < text.length) {
                     resultMap[href] = text;
                 }
             }
         }
-        
+
         var result = [];
         for (var key in resultMap) {
             result.push({url: key, text: resultMap[key]});
@@ -103,6 +102,17 @@ val getLinksInSelectionJs = """
     })()
 """.trimIndent()
 
+// Holds the callback to signal page load completion to the batch coroutine
+private class PageLoadCallbackHolder {
+    var onPageLoaded: (() -> Unit)? = null
+}
+
+private fun sanitizePdfFilename(title: String): String {
+    val safe = title.replace(Regex("[\\\\/:*?\"<>|]"), "_").trim().take(100)
+    return if (safe.endsWith(".pdf", ignoreCase = true)) safe else "$safe.pdf"
+}
+
+@SuppressLint("SetJavaScriptEnabled")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BatchLinkPrintDialog(
@@ -111,6 +121,7 @@ fun BatchLinkPrintDialog(
     presetSettings: Triple<Boolean, Boolean, Boolean> // textOnly, grayscale, noBackground
 ) {
     val context = LocalContext.current
+
     // Parse links
     val links = remember(linksJson) {
         val list = mutableListOf<LinkItem>()
@@ -124,364 +135,329 @@ fun BatchLinkPrintDialog(
         list
     }
 
-    var selectedPresetName by remember { mutableStateOf<String?>(null) }
-    
-    // Repositories & State
+    val settingsRepository = remember { SettingsRepository(context) }
     val presetRepository = remember { PresetRepository(context) }
     var presets by remember { mutableStateOf<List<Preset>>(emptyList()) }
-    
-    // Mutable Settings State (Default to passed params)
+
+    // Print Settings (defaults from caller's current state)
     var isTextOnly by remember { mutableStateOf(presetSettings.first) }
     var isGrayscale by remember { mutableStateOf(presetSettings.second) }
     var isRemoveBackground by remember { mutableStateOf(presetSettings.third) }
     var isAdsRemoved by remember { mutableStateOf(false) }
     var isImageAdjusted by remember { mutableStateOf(false) }
-    
-    // Load Presets
+
     LaunchedEffect(Unit) {
         presets = presetRepository.getPresets()
     }
 
+    // Batch processing state
     var isGenerating by remember { mutableStateOf(false) }
     var progress by remember { mutableStateOf(0) }
     var total by remember { mutableStateOf(0) }
-    var statusMessage by remember { mutableStateOf("準備中...") }
-    var isWaitingForImages by remember { mutableStateOf(false) }
+    var statusMessage by remember { mutableStateOf("") }
     var webViewInstance by remember { mutableStateOf<WebView?>(null) }
-    var pendingSaveTitle by remember { mutableStateOf<String?>(null) }
-    val coroutineScope = rememberCoroutineScope()
-    
-    val targetLinks = remember(isGenerating) { links.filter { it.selected.value } }
-    var currentLinkIndex by remember { mutableStateOf(0) }
+    val callbackHolder = remember { PageLoadCallbackHolder() }
 
-    var selectedFolderUri by remember { mutableStateOf<android.net.Uri?>(null) }
-    
-    val folderPickLauncher = rememberLauncherForActivityResult(
-        contract = androidx.activity.result.contract.ActivityResultContracts.OpenDocumentTree(),
-        onResult = { uri ->
-            if (uri != null) {
-                // We got the folder!
-                context.contentResolver.takePersistableUriPermission(
-                    uri,
-                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                )
-                selectedFolderUri = uri
-                isGenerating = true
-                currentLinkIndex = 0
-            } else {
-                Toast.makeText(context, "フォルダ選択がキャンセルされました", Toast.LENGTH_SHORT).show()
-                isGenerating = false
+    // Batch processing coroutine — starts when isGenerating becomes true
+    LaunchedEffect(isGenerating) {
+        if (!isGenerating) return@LaunchedEffect
+
+        // Wait for the hidden WebView to be created by Compose
+        val wv = snapshotFlow { webViewInstance }.first { it != null }!!
+
+        val selectedLinks = links.filter { it.selected.value }
+        val customUriString = settingsRepository.customSaveUri
+        var successCount = 0
+        var failCount = 0
+
+        for ((index, link) in selectedLinks.withIndex()) {
+            statusMessage = "${index + 1} / ${selectedLinks.size} 件目を処理中...\n「${link.text.take(40)}」"
+
+            // Set up load callback then load URL (both on main thread to avoid race)
+            val loadDeferred = kotlinx.coroutines.CompletableDeferred<Unit>()
+            withContext(Dispatchers.Main) {
+                callbackHolder.onPageLoaded = {
+                    if (!loadDeferred.isCompleted) loadDeferred.complete(Unit)
+                }
+                wv.loadUrl(link.url)
             }
-        }
-    )
 
-    LaunchedEffect(pendingSaveTitle) {
-        val title = pendingSaveTitle
-        val folderUri = selectedFolderUri
-        if (title != null && folderUri != null && webViewInstance != null) {
-            statusMessage = "PDFを保存中: $title..."
-            coroutineScope.launch {
-                try {
-                    val docId = DocumentsContract.getTreeDocumentId(folderUri)
-                    val dirUri = DocumentsContract.buildDocumentUriUsingTree(folderUri, docId)
-                    val newFileUri = DocumentsContract.createDocument(context.contentResolver, dirUri, "application/pdf", title)
-                    
-                    if (newFileUri != null) {
-                        val success = saveWebViewAsPdfToTarget(context, webViewInstance!!, newFileUri)
-                        if (success) {
-                            val nextIndex = currentLinkIndex + 1
-                            if (nextIndex < targetLinks.size) {
-                                currentLinkIndex = nextIndex
-                                progress = nextIndex
-                                statusMessage = "${nextIndex + 1} / $total ページ目を処理中: ${targetLinks[nextIndex].text}"
-                            } else {
-                                Toast.makeText(context, "すべてのPDFの保存が完了しました！", Toast.LENGTH_LONG).show()
-                                onDismiss() // All done
-                            }
-                        } else {
-                            Toast.makeText(context, "保存失敗: $title", Toast.LENGTH_SHORT).show()
-                            currentLinkIndex++
-                        }
-                    } else {
-                        Toast.makeText(context, "ファイル作成失敗: $title", Toast.LENGTH_SHORT).show()
-                        currentLinkIndex++
-                    }
-                } catch (e: Exception) {
-                    Toast.makeText(context, "エラーが発生しました: ${e.message}", Toast.LENGTH_SHORT).show()
-                    currentLinkIndex++
-                } finally {
-                    pendingSaveTitle = null
+            // Wait for page to finish loading (30s timeout)
+            withTimeoutOrNull(30_000L) { loadDeferred.await() }
+
+            // Apply JS transformations
+            withContext(Dispatchers.Main) {
+                val baseJs = removeAdsJs + "\n" + toggleTextOnlyJs + "\n" + toggleGrayscaleJs + "\n" + toggleNoBackgroundJs
+                wv.evaluateJavascript(baseJs, null)
+                if (isAdsRemoved) wv.evaluateJavascript("if(window.peToggleRemoveAds) window.peToggleRemoveAds(true);", null)
+                if (isTextOnly) wv.evaluateJavascript("if(window.toggleTextOnly) window.toggleTextOnly(true);", null)
+                if (isGrayscale) wv.evaluateJavascript("if(window.toggleGrayscale) window.toggleGrayscale(true);", null)
+                if (isRemoveBackground) wv.evaluateJavascript("if(window.toggleNoBackground) window.toggleNoBackground(true);", null)
+                if (isImageAdjusted) wv.evaluateJavascript(smartFitImagesJs, null)
+            }
+
+            // Wait for rendering to settle
+            kotlinx.coroutines.delay(2000L)
+
+            // Get page title
+            val titleDeferred = kotlinx.coroutines.CompletableDeferred<String>()
+            withContext(Dispatchers.Main) {
+                wv.evaluateJavascript("document.title") { rawTitle ->
+                    val t = rawTitle?.removeSurrounding("\"")?.ifBlank { link.text } ?: link.text
+                    titleDeferred.complete(t)
                 }
             }
+            val title = titleDeferred.await().ifBlank { link.text }
+            val filename = sanitizePdfFilename(title)
+
+            // Save PDF to target
+            val success = if (customUriString != null) {
+                savePdfToFolderUri(context, wv, Uri.parse(customUriString), filename)
+            } else {
+                savePdfToDownloadsImpl(context, wv, filename)
+            }
+
+            if (success) successCount++ else failCount++
+            progress = index + 1
         }
+
+        // Show result toast
+        withContext(Dispatchers.Main) {
+            val destination = if (customUriString != null) "設定したフォルダ" else "Downloads/PrintEdit"
+            val msg = when {
+                failCount == 0 -> "${successCount}件のPDFを${destination}に保存しました！"
+                successCount == 0 -> "PDF保存に失敗しました（${failCount}件）"
+                else -> "${successCount}件保存成功、${failCount}件失敗"
+            }
+            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+        }
+        isGenerating = false
+        onDismiss()
     }
 
-    if (isGenerating) {
-        // Recursive Loading UI (Overlay)
-        AlertDialog(
-            onDismissRequest = {},
-            title = { Text("PDF自動保存処理中") },
-            text = {
-                Column {
-                    LinearProgressIndicator(progress = if (total > 0) progress.toFloat() / total else 0f)
-                    Spacer(Modifier.height(8.dp))
-                    Text(statusMessage)
-                    Text("保存先を選択してください。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
-                }
-            },
-            confirmButton = {}
-        )
-        
-        // Hidden WebView for Processing
-        var loadedUrlForIndex by remember { mutableStateOf(-1) }
-
-        // WebView のクリーンアップ
-        DisposableEffect(Unit) {
-            onDispose {
-                webViewInstance?.destroy()
-                webViewInstance = null
-            }
-        }
-
-        // Bug #4 fix: WebView の再利用 — destroy せず loadUrl で次ページを読み込む
-        LaunchedEffect(currentLinkIndex, webViewInstance) {
-            if (webViewInstance != null && currentLinkIndex < targetLinks.size && loadedUrlForIndex != currentLinkIndex) {
-                loadedUrlForIndex = currentLinkIndex
-                webViewInstance?.loadUrl(targetLinks[currentLinkIndex].url)
-            }
-        }
-
-        AndroidView(
-            factory = { ctx ->
-                WebView(ctx).apply {
-                    webViewInstance = this
-                    settings.javaScriptEnabled = true
-                    settings.domStorageEnabled = true
-                    settings.loadsImagesAutomatically = true
-                    settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                    
-                    addJavascriptInterface(PrintReadyInterface {
-                        // This indicates images are ready and WebView finished rendering
-                        isWaitingForImages = false
-                        statusMessage = "保存先を準備中..."
-                        var baseTitle = targetLinks[currentLinkIndex].text.take(30).replace(Regex("[\\\\/:*?\"<>|]"), "-").trim()
-                        if (baseTitle.isEmpty()) {
-                            baseTitle = "Document_${currentLinkIndex + 1}"
-                        }
-                        pendingSaveTitle = "PrintEdit_${baseTitle}.pdf"
-                    }, "AndroidPrint")
-                    
-                    webViewClient = object : WebViewClient() {
-                        override fun onPageFinished(view: WebView?, url: String?) {
-                            super.onPageFinished(view, url)
-                            // 1. Inject all JS function definitions first
-                            val jsDefs = StringBuilder()
-                            jsDefs.append(toggleTextOnlyJs)
-                            jsDefs.append(toggleGrayscaleJs)
-                            jsDefs.append(toggleNoBackgroundJs)
-                            jsDefs.append(removeAdsJs)
-                            jsDefs.append(toggleRemoveElementModeJs)
-                            view?.evaluateJavascript(jsDefs.toString(), null)
-                            
-                            // 2. Then call the toggle functions with the preset values
-                            val jsCalls = StringBuilder()
-                            if (isTextOnly) jsCalls.append("if(window.toggleTextOnly) window.toggleTextOnly(true);")
-                            if (isGrayscale) jsCalls.append("if(window.toggleGrayscale) window.toggleGrayscale(true);")
-                            if (isRemoveBackground) jsCalls.append("if(window.toggleNoBackground) window.toggleNoBackground(true);")
-                            // Bug #6 fix: 広告削除はフラグに基づいて条件実行
-                            if (isAdsRemoved) jsCalls.append("if(window.peManualRemoveAds) window.peManualRemoveAds();")
-                            
-                            // Bug #10 fix: Apply selectors from chosen preset
-                            presets.firstOrNull { it.name == selectedPresetName }?.let { preset ->
-                                if (preset.selectors.isNotEmpty()) {
-                                    val selectorsJson = org.json.JSONArray(preset.selectors).toString()
-                                    val escapedJson = selectorsJson.replace("'", "\\'")
-                                    jsCalls.append("if(window.peApplyRemovedSelectors) window.peApplyRemovedSelectors('${escapedJson}');")
-                                }
-                            }
-                            
-                            view?.evaluateJavascript(jsCalls.toString(), null)
-                            
-                            // 2. Wait for images to load, then notify AndroidPrint
-                            statusMessage = "画像の読み込みと自動スクロール中..."
-                            isWaitingForImages = true
-                            view?.postDelayed({
-                                val imageWaitJs = """
-                                    (function() {
-                                        // Inject Pagination CSS to prevent cutoffs in Canvas drawing
-                                        var style = document.createElement('style');
-                                        style.innerHTML = 'img, p, h1, h2, h3, h4, li, figure { page-break-inside: avoid !important; break-inside: avoid !important; }';
-                                        document.head.appendChild(style);
-                                        
-                                        function notify() { AndroidPrint.notifyReady(); }
-                                        
-                                        var currentPos = 0;
-                                        var step = window.innerHeight || 800;
-                                        
-                                        var interval = setInterval(function() {
-                                            currentPos += step;
-                                            window.scrollTo(0, currentPos);
-                                            var currentMax = Math.max(document.body.scrollHeight, 5000);
-                                            if (currentPos >= currentMax || currentPos > 30000) {
-                                                clearInterval(interval);
-                                                window.scrollTo(0, 0);
-                                                
-                                                setTimeout(function() {
-                                                    checkImages();
-                                                }, 1500); 
-                                            }
-                                        }, 150);
-                                        
-                                        function checkImages() {
-                                            var images = Array.from(document.images);
-                                            var outstanding = images.length;
-                                            var resolved = false;
-                                            
-                                            function checkDone() {
-                                                if (resolved) return;
-                                                outstanding--;
-                                                if (outstanding <= 0) {
-                                                    resolved = true;
-                                                    notify();
-                                                }
-                                            }
-                                            
-                                            if (outstanding === 0) {
-                                                notify();
-                                                return;
-                                            }
-                                            
-                                            setTimeout(function() { 
-                                                if (!resolved) { 
-                                                    resolved = true; 
-                                                    notify(); 
-                                                } 
-                                            }, 10000); // 10 seconds timeout for images
-                                            
-                                            images.forEach(function(img) {
-                                                if (img.complete) {
-                                                    checkDone();
-                                                } else {
-                                                    // Check lazy load attrs and force src
-                                                    var rawDataSrc = img.dataset.src || img.dataset.lazySrc || img.getAttribute('data-original');
-                                                    if (rawDataSrc && (!img.src || img.src.indexOf('data:') === 0)) {
-                                                         try { img.src = new URL(rawDataSrc, document.baseURI).href; } catch(e){}
-                                                    }
-                                                    if (img.getAttribute('loading') === 'lazy') {
-                                                        img.removeAttribute('loading');
-                                                    }
-                                                    
-                                                    img.addEventListener('load', checkDone, {once: true});
-                                                    img.addEventListener('error', checkDone, {once: true});
-                                                }
-                                            });
-                                        }
-                                    })();
-                                """.trimIndent()
-                                view.evaluateJavascript(imageWaitJs, null)
-                            }, 500) // Delay apply
-                        }
-                    }
-                }
-            },
-            update = { webView ->
-                // update は WebView の参照を維持するだけ。URL 読み込みは LaunchedEffect で行う
-                webViewInstance = webView
-            },
-            modifier = Modifier.fillMaxSize().alpha(0.01f) // Use fillMaxSize to ensure all layout resolves for images
-        )
-        
-        LaunchedEffect(Unit) {
-            total = targetLinks.size
-            if (total == 0) {
-                onDismiss()
-            } else {
-                statusMessage = "1 / $total ページ目を処理中: ${targetLinks[0].text}"
-            }
-        }
-
-    } else {
-        // Selection UI
-        AlertDialog(
-            onDismissRequest = onDismiss,
-            title = { Text("リンクをまとめて印刷") },
-            text = {
-                Column {
-                    Text("${links.size} 件のリンクが見つかりました")
-                    
-                    // Preset Selection
-                    if (presets.isNotEmpty()) {
-                        Spacer(Modifier.height(8.dp))
-                        Text("プリセットを適用:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.padding(vertical = 4.dp)
-                        ) {
-                            items(presets) { preset ->
-                                FilterChip(
-                                    selected = selectedPresetName == preset.name,
-                                    onClick = { 
-                                        selectedPresetName = preset.name
-                                        isTextOnly = preset.textOnly
-                                        isGrayscale = preset.grayscale
-                                        isRemoveBackground = preset.removeBackground
-                                        // Bug #7 fix: adsRemoved, imageAdjusted も反映
-                                        isAdsRemoved = preset.adsRemoved
-                                        isImageAdjusted = preset.imageAdjusted
-                                    },
-                                    label = { Text(preset.name) },
-                                    leadingIcon = { Icon(Icons.Filled.Settings, null, Modifier.size(16.dp)) }
-                                )
-                            }
-                        }
-                    }
-                    
-                    // Manual Overrides
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(checked = isTextOnly, onCheckedChange = { isTextOnly = it })
-                        Text("文字のみ", style = MaterialTheme.typography.bodySmall)
-                        Spacer(Modifier.width(8.dp))
-                        Checkbox(checked = isGrayscale, onCheckedChange = { isGrayscale = it })
-                        Text("白黒", style = MaterialTheme.typography.bodySmall)
-                        Spacer(Modifier.width(8.dp))
-                        Checkbox(checked = isRemoveBackground, onCheckedChange = { isRemoveBackground = it })
-                        Text("背景削除", style = MaterialTheme.typography.bodySmall)
-                    }
-
-                    Spacer(Modifier.height(8.dp))
-                    LazyColumn(modifier = Modifier.weight(1f, fill = false).heightIn(max = 300.dp)) {
-                        items(links) { link ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Checkbox(
-                                    checked = link.selected.value,
-                                    onCheckedChange = { link.selected.value = it }
-                                )
-                                Column(modifier = Modifier.padding(start = 8.dp)) {
-                                    Text(link.text, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
-                                    Text(link.url, style = MaterialTheme.typography.bodySmall, maxLines = 1)
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = { folderPickLauncher.launch(null) },
-                    enabled = links.any { it.selected.value } && !isGenerating // Prevent double click
+    Dialog(onDismissRequest = { if (!isGenerating) onDismiss() }) {
+        Box {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.large
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text("フォルダを選択して作成開始")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = onDismiss) {
-                    Text("キャンセル")
+                    if (isGenerating) {
+                        // ---- Progress View ----
+                        Text(
+                            "PDF自動保存処理中...",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            statusMessage,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            minLines = 2
+                        )
+                        LinearProgressIndicator(
+                            progress = if (total > 0) progress.toFloat() / total else 0f,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Text(
+                            "$progress / $total 件完了",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        // ---- Setup View ----
+                        Text(
+                            "バッチPDF保存",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        // Select all / none row
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "${links.count { it.selected.value }} / ${links.size} 件選択",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Row {
+                                TextButton(onClick = { links.forEach { it.selected.value = true } }) { Text("全選択") }
+                                TextButton(onClick = { links.forEach { it.selected.value = false } }) { Text("全解除") }
+                            }
+                        }
+
+                        // Link list
+                        LazyColumn(modifier = Modifier.heightIn(max = 220.dp)) {
+                            items(links) { link ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Checkbox(
+                                        checked = link.selected.value,
+                                        onCheckedChange = { link.selected.value = it }
+                                    )
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            link.text,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                        Text(
+                                            link.url,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        Divider()
+
+                        // Print Settings
+                        Text("印刷設定", style = MaterialTheme.typography.labelLarge)
+
+                        // Preset selector
+                        if (presets.isNotEmpty()) {
+                            var showPresetMenu by remember { mutableStateOf(false) }
+                            Box(modifier = Modifier.fillMaxWidth()) {
+                                OutlinedButton(
+                                    onClick = { showPresetMenu = true },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("プリセットを適用...")
+                                }
+                                DropdownMenu(
+                                    expanded = showPresetMenu,
+                                    onDismissRequest = { showPresetMenu = false }
+                                ) {
+                                    presets.forEach { preset ->
+                                        DropdownMenuItem(
+                                            text = { Text(preset.name) },
+                                            onClick = {
+                                                isTextOnly = preset.textOnly
+                                                isGrayscale = preset.grayscale
+                                                isRemoveBackground = preset.removeBackground
+                                                isAdsRemoved = preset.adsRemoved
+                                                isImageAdjusted = preset.imageAdjusted
+                                                showPresetMenu = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Settings chips — row 1
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FilterChip(
+                                selected = isTextOnly,
+                                onClick = { isTextOnly = !isTextOnly },
+                                label = { Text("文字のみ") }
+                            )
+                            FilterChip(
+                                selected = isGrayscale,
+                                onClick = { isGrayscale = !isGrayscale },
+                                label = { Text("白黒") }
+                            )
+                            FilterChip(
+                                selected = isRemoveBackground,
+                                onClick = { isRemoveBackground = !isRemoveBackground },
+                                label = { Text("背景なし") }
+                            )
+                        }
+                        // Settings chips — row 2
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FilterChip(
+                                selected = isAdsRemoved,
+                                onClick = { isAdsRemoved = !isAdsRemoved },
+                                label = { Text("広告削除") }
+                            )
+                            FilterChip(
+                                selected = isImageAdjusted,
+                                onClick = { isImageAdjusted = !isImageAdjusted },
+                                label = { Text("画像調整") }
+                            )
+                        }
+
+                        // Save destination info
+                        val customUri = settingsRepository.customSaveUri
+                        Text(
+                            text = if (customUri != null) "保存先: 設定済みカスタムフォルダ" else "保存先: Downloads/PrintEdit",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        // Action buttons
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            TextButton(onClick = onDismiss) { Text("キャンセル") }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Button(
+                                onClick = {
+                                    val count = links.count { it.selected.value }
+                                    if (count == 0) {
+                                        Toast.makeText(context, "リンクを1件以上選択してください", Toast.LENGTH_SHORT).show()
+                                        return@Button
+                                    }
+                                    total = count
+                                    progress = 0
+                                    statusMessage = "WebViewを準備中..."
+                                    isGenerating = true
+                                }
+                            ) {
+                                Text("一括保存 (${links.count { it.selected.value }}件)")
+                            }
+                        }
+                    }
                 }
             }
-        )
+
+            // Hidden WebView — added to composition only during batch processing.
+            // Uses desktop UA + wideViewPort for proper page rendering.
+            if (isGenerating) {
+                AndroidView(
+                    factory = { ctx ->
+                        WebView(ctx).apply {
+                            settings.javaScriptEnabled = true
+                            settings.domStorageEnabled = true
+                            settings.loadsImagesAutomatically = true
+                            settings.useWideViewPort = true
+                            settings.loadWithOverviewMode = true
+                            settings.userAgentString =
+                                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                            webViewClient = object : WebViewClient() {
+                                override fun onPageFinished(view: WebView?, url: String?) {
+                                    super.onPageFinished(view, url)
+                                    callbackHolder.onPageLoaded?.let { cb ->
+                                        callbackHolder.onPageLoaded = null
+                                        cb()
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    update = { wv -> webViewInstance = wv },
+                    modifier = Modifier
+                        .size(1.dp)
+                        .alpha(0f)
+                )
+            }
+        }
     }
 }
 
@@ -535,5 +511,61 @@ suspend fun saveWebViewAsPdfToTarget(context: Context, webView: WebView, targetU
     } catch (e: Exception) {
         e.printStackTrace()
         return@withContext false
+    }
+}
+
+suspend fun savePdfToDownloadsImpl(context: Context, webView: WebView, title: String): Boolean = withContext(Dispatchers.IO) {
+    try {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            val contentValues = android.content.ContentValues().apply {
+                put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, title)
+                put(android.provider.MediaStore.MediaColumns.MIME_TYPE, "application/pdf")
+                put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, android.os.Environment.DIRECTORY_DOWNLOADS + "/PrintEdit")
+                put(android.provider.MediaStore.MediaColumns.IS_PENDING, 1)
+            }
+            val uri = context.contentResolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues) ?: return@withContext false
+            val success = saveWebViewAsPdfToTarget(context, webView, uri)
+
+            contentValues.clear()
+            contentValues.put(android.provider.MediaStore.MediaColumns.IS_PENDING, 0)
+            context.contentResolver.update(uri, contentValues, null, null)
+
+            return@withContext success
+        } else {
+            // Fallback for Android 9 and below
+            val dir = java.io.File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS), "PrintEdit")
+            if (!dir.exists()) dir.mkdirs()
+            val safeTitle = title.replace(Regex("[\\\\/:*?\"<>|]"), "_")
+            var file = java.io.File(dir, safeTitle)
+            var counter = 1
+            while (file.exists()) {
+                file = java.io.File(dir, safeTitle.replace(".pdf", " ($counter).pdf"))
+                counter++
+            }
+            val uri = android.net.Uri.parse("file://" + file.absolutePath)
+            return@withContext saveWebViewAsPdfToTarget(context, webView, uri)
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+        return@withContext false
+    }
+}
+
+// Save PDF to a user-selected folder URI (e.g. Google Drive, custom folder)
+suspend fun savePdfToFolderUri(context: Context, webView: WebView, treeUri: Uri, filename: String): Boolean = withContext(Dispatchers.IO) {
+    try {
+        val docUri = android.provider.DocumentsContract.createDocument(
+            context.contentResolver,
+            android.provider.DocumentsContract.buildDocumentUriUsingTree(
+                treeUri,
+                android.provider.DocumentsContract.getTreeDocumentId(treeUri)
+            ),
+            "application/pdf",
+            filename
+        ) ?: return@withContext false
+        saveWebViewAsPdfToTarget(context, webView, docUri)
+    } catch (e: Exception) {
+        e.printStackTrace()
+        false
     }
 }

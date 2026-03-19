@@ -1,5 +1,8 @@
 package com.example.printedit.ui
 
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -36,9 +39,24 @@ fun SettingsScreen(
     
     val presetRepository = remember { PresetRepository(context) }
     var showPresetManager by remember { mutableStateOf(false) }
-    
+
     // Menu Actions State
     var menuActions by remember { mutableStateOf(settingsRepository.menuActions) }
+
+    // PDF Batch Save Destination
+    var customSaveUri by remember { mutableStateOf(settingsRepository.customSaveUri) }
+    val folderPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        if (uri != null) {
+            context.contentResolver.takePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            )
+            settingsRepository.customSaveUri = uri.toString()
+            customSaveUri = uri.toString()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -152,7 +170,61 @@ fun SettingsScreen(
                 }
             }
 
-            // Section 3: Presets
+            // Section 3: PDF Batch Save Destination
+            item {
+                Divider()
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "一括PDF保存先",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "バッチ印刷で保存するフォルダを設定します。デフォルトはダウンロード内の PrintEdit フォルダです。",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                if (customSaveUri != null) {
+                    Text(
+                        text = "現在: カスタムフォルダ (設定済み)",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    OutlinedButton(
+                        onClick = {
+                            settingsRepository.customSaveUri = null
+                            customSaveUri = null
+                        },
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)
+                    ) {
+                        Text("デフォルト (Downloads/PrintEdit) に戻す")
+                    }
+                } else {
+                    Text(
+                        text = "現在: Downloads/PrintEdit (デフォルト)",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
+                OutlinedButton(
+                    onClick = { folderPickerLauncher.launch(null) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("保存先フォルダを変更する (Google Drive等)")
+                }
+                Text(
+                    text = "※ 一度選択すれば、以後はダイアログなしで自動保存されます。",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+
+            // Section 4: Presets
             item {
                 Divider()
                 Spacer(modifier = Modifier.height(16.dp))
