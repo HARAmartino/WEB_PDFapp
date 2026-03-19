@@ -56,12 +56,12 @@ window.peManualRemoveAds = function() {
     function clean() {
         selectors.forEach(function(sel) {
             document.querySelectorAll(sel).forEach(function(el) {
-                el.style.display = 'none';
-                el.style.height = '0';
-                el.style.maxHeight = '0';
-                el.style.margin = '0';
-                el.style.padding = '0';
-                el.style.overflow = 'hidden';
+                el.style.setProperty('display', 'none', 'important');
+                el.style.setProperty('height', '0', 'important');
+                el.style.setProperty('max-height', '0', 'important');
+                el.style.setProperty('margin', '0', 'important');
+                el.style.setProperty('padding', '0', 'important');
+                el.style.setProperty('overflow', 'hidden', 'important');
                 
                 // Hide parent wrappers that are left empty or just contain ad labels
                 var parent = el.parentElement;
@@ -69,12 +69,12 @@ window.peManualRemoveAds = function() {
                 while (parent && parent !== document.body && depth < 3) {
                     var text = parent.textContent.replace(/Advertisement|広告|PR|Sponsored|スポンサーリンク/g, '').trim();
                     if (text === '') {
-                        parent.style.display = 'none';
-                        parent.style.height = '0';
-                        parent.style.maxHeight = '0';
-                        parent.style.margin = '0';
-                        parent.style.padding = '0';
-                        parent.style.overflow = 'hidden';
+                        parent.style.setProperty('display', 'none', 'important');
+                        parent.style.setProperty('height', '0', 'important');
+                        parent.style.setProperty('max-height', '0', 'important');
+                        parent.style.setProperty('margin', '0', 'important');
+                        parent.style.setProperty('padding', '0', 'important');
+                        parent.style.setProperty('overflow', 'hidden', 'important');
                         parent = parent.parentElement;
                         depth++;
                     } else {
@@ -91,16 +91,16 @@ window.peManualRemoveAds = function() {
                 if (el.childElementCount <= 1) { // allow max 1 empty child
                     var text = el.textContent.trim();
                     if (exactTexts.indexOf(text) !== -1) {
-                        el.style.display = 'none';
-                        el.style.height = '0';
-                        el.style.margin = '0';
-                        el.style.padding = '0';
+                        el.style.setProperty('display', 'none', 'important');
+                        el.style.setProperty('height', '0', 'important');
+                        el.style.setProperty('margin', '0', 'important');
+                        el.style.setProperty('padding', '0', 'important');
                         var p = el.parentElement;
                         if (p && p.textContent.trim() === text) {
-                            p.style.display = 'none';
-                            p.style.height = '0';
-                            p.style.margin = '0';
-                            p.style.padding = '0';
+                            p.style.setProperty('display', 'none', 'important');
+                            p.style.setProperty('height', '0', 'important');
+                            p.style.setProperty('margin', '0', 'important');
+                            p.style.setProperty('padding', '0', 'important');
                         }
                     }
                 }
@@ -874,33 +874,54 @@ val menuFixJs = """
         try {
             var sel = 'header, nav, [role="navigation"], [role="menu"],' +
                 '[class*="nav-"], [class*="-nav"], [class*="menu-"], [class*="-menu"],' +
-                '[class*="drawer"], [class*="sidebar"], [class*="gnav"]';
+                '[class*="drawer"], [class*="sidebar"], [class*="gnav"],' +
+                '.overlay, [class*="overlay"]';
             document.querySelectorAll(sel).forEach(function(el) {
                 var cs = window.getComputedStyle(el);
                 var bg = cs.backgroundColor;
                 if (bg && bg.indexOf('rgba') !== -1) {
                     var m = bg.match(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/);
-                    /* Only solidify if alpha is meaningful (>0.3) to keep invisible helpers intact */
-                    if (m && parseFloat(m[4]) > 0.3 && parseFloat(m[4]) < 1) {
-                        el.style.backgroundColor = 'rgb(' + m[1] + ',' + m[2] + ',' + m[3] + ')';
+                    if (m) {
+                        var alpha = parseFloat(m[4]);
+                        /* Solidify translucent layers for readability */
+                        if (alpha > 0.05 && alpha < 0.98) {
+                            el.style.setProperty('background-color', 'rgb(' + m[1] + ',' + m[2] + ',' + m[3] + ')', 'important');
+                            el.style.setProperty('backdrop-filter', 'none', 'important');
+                            el.style.setProperty('-webkit-backdrop-filter', 'none', 'important');
+                        }
                     }
                 }
             });
         } catch(e) {}
     }
+    
+    // Initial runs
     fixTransparentMenus();
+    setTimeout(fixTransparentMenus, 500);
+    setTimeout(fixTransparentMenus, 2000);
 
-    /* MutationObserver: watch only <head> direct children to re-prioritize our style
-       (avoids expensive subtree observation on the entire document) */
-    if (typeof MutationObserver !== 'undefined' && document.head) {
-        new MutationObserver(function() {
-            var s = document.getElementById(STYLE_ID);
-            if (s && document.head.lastElementChild !== s) {
-                document.head.appendChild(s);
+    /* 再発防止策 (Recurrent prevention): Watch for dynamic menus on SPAs */
+    // 1. Observe clicks (often opens menus)
+    document.addEventListener('click', function() {
+        setTimeout(fixTransparentMenus, 50);
+        setTimeout(fixTransparentMenus, 300);
+    }, { passive: true });
+    
+    // 2. Observe DOM mutations for newly added overlays
+    if (typeof MutationObserver !== 'undefined' && document.body) {
+        var menuObserver = new MutationObserver(function(mutations) {
+            var shouldFix = false;
+            for (var i = 0; i < mutations.length; i++) {
+                if (mutations[i].addedNodes.length > 0 || mutations[i].attributeName === 'class' || mutations[i].attributeName === 'style') {
+                    shouldFix = true; break;
+                }
             }
-        }).observe(document.head, { childList: true });
+            if (shouldFix) {
+                clearTimeout(window._peMenuFixTimer);
+                window._peMenuFixTimer = setTimeout(fixTransparentMenus, 150);
+            }
+        });
+        menuObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
     }
-    /* Re-run background fix once after page settles (for lazy-loaded menus) */
-    setTimeout(fixTransparentMenus, 800);
 })();
 """.trimIndent()

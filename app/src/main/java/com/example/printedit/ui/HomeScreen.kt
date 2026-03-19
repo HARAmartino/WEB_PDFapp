@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -119,6 +120,25 @@ fun HomeScreen(
                             innerTextField()
                         }
                     )
+                    
+                    // Save Button
+                    if (searchText.isNotBlank()) {
+                        IconButton(onClick = {
+                            val input = searchText.trim()
+                            val url = when {
+                                input.startsWith("http://") || input.startsWith("https://") -> input
+                                input.contains(".") && !input.contains(" ") -> "https://$input"
+                                else -> "https://www.google.com/search?q=${Uri.encode(input)}"
+                            }
+                            savedUrlRepo.save(url, "入力したURL")
+                            savedUrls = savedUrlRepo.getAll()
+                            searchText = ""
+                            focusManager.clearFocus()
+                            android.widget.Toast.makeText(context, "URLを保存しました", android.widget.Toast.LENGTH_SHORT).show()
+                        }) {
+                            Icon(Icons.Default.BookmarkBorder, contentDescription = "Save URL", tint = MaterialTheme.colorScheme.primary)
+                        }
+                    }
                 }
             }
 

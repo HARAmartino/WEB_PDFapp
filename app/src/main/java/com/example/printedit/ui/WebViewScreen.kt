@@ -144,6 +144,9 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                 AndroidView(
                     factory = { ctx ->
                         WebView(ctx).apply {
+                            if (0 != (context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE)) {
+                                android.webkit.WebView.setWebContentsDebuggingEnabled(true)
+                            }
                             settings.javaScriptEnabled = true
                             settings.domStorageEnabled = true
                             settings.databaseEnabled = true
