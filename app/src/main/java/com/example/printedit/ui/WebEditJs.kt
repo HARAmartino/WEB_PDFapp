@@ -174,6 +174,65 @@ window.peToggleRemoveAds = function(enable) {
         addCssHideRule('[data-pe-ad-hidden]');
     }
 
+    // After ad elements are hidden, collapse parent containers that became empty.
+    // Walks up the parent tree; if every child of a container is now hidden,
+    // marks that container hidden too.  If some content remains but an explicit
+    // min-height / height is creating a blank gap, collapses those dimensions.
+    function collapseEmptyAdContainers() {
+        document.querySelectorAll('[data-pe-ad-hidden]').forEach(function(el) {
+            var parent = el.parentElement;
+            var depth = 0;
+            while (parent && parent !== document.body && parent !== document.documentElement && depth < 6) {
+                if (parent.getAttribute('data-pe-ad-hidden')) break;
+                var children = parent.children;
+                if (children.length === 0) break;
+                var allHidden = true;
+                for (var i = 0; i < children.length; i++) {
+                    var child = children[i];
+                    if (!child.getAttribute('data-pe-ad-hidden') &&
+                        window.getComputedStyle(child).display !== 'none') {
+                        allHidden = false;
+                        break;
+                    }
+                }
+                if (allHidden) {
+                    markAdElement(parent);
+                    parent = parent.parentElement;
+                    depth++;
+                } else {
+                    // Some visible children remain — but an explicit min-height / height
+                    // may still leave a tall blank gap.  Collapse it only when no visible
+                    // text is left inside this container.
+                    var pcs = window.getComputedStyle(parent);
+                    var mh = pcs.minHeight;
+                    var hasExplicitHeight = (mh && mh !== '0px' && mh !== 'auto' && mh !== 'none') ||
+                                           (pcs.height && pcs.height !== 'auto' && pcs.height !== '0px');
+                    if (hasExplicitHeight) {
+                        var hasVisibleText = false;
+                        for (var j = 0; j < children.length; j++) {
+                            var c = children[j];
+                            if (!c.getAttribute('data-pe-ad-hidden') &&
+                                window.getComputedStyle(c).display !== 'none' &&
+                                c.textContent.trim().length > 0) {
+                                hasVisibleText = true;
+                                break;
+                            }
+                        }
+                        if (!hasVisibleText) {
+                            parent.style.setProperty('min-height', '0', 'important');
+                            parent.style.setProperty('height', 'auto', 'important');
+                            parent.style.setProperty('padding-top', '0', 'important');
+                            parent.style.setProperty('padding-bottom', '0', 'important');
+                            parent.style.setProperty('margin-top', '0', 'important');
+                            parent.style.setProperty('margin-bottom', '0', 'important');
+                        }
+                    }
+                    break;
+                }
+            }
+        });
+    }
+
     function clean() {
         ensureDataAttrRule();
 
@@ -297,6 +356,9 @@ window.peToggleRemoveAds = function(enable) {
                 depth++;
             }
         });
+
+        // Collapse empty parent containers left behind after ad removal
+        collapseEmptyAdContainers();
     }
 
     // Override HTMLVideoElement.prototype.play to intercept ad video playback
