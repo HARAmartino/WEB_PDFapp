@@ -16,133 +16,350 @@ window.peToggleRemoveAds = function(enable) {
             clearInterval(window._peAdInterval);
             window._peAdInterval = null;
         }
+        // Remove the stylesheet
+        var styleEl = document.getElementById('pe-ad-hide');
+        if (styleEl) styleEl.remove();
         return;
     }
     
     console.log("PrintEdit: Persistently Removing Ads...");
     var selectors = [
-        '.google-auto-placed', 
-        'iframe[id^="google_ads_iframe"]', 
-        '.adsbygoogle',
+        // Google
+        '.google-auto-placed',
+        'iframe[id^="google_ads_iframe"]',
+        '.adsbygoogle', 'ins.adsbygoogle', 'ins[data-ad-client]',
         '[id^="div-gpt-ad"]',
-        '.nt-03', 
-        '.mod-ad',
-        '#taboola-below-article-thumbnails',
-        '.im-ad-unit',
-        '.ad-slot',
-        '.ad-banner',
-        '.ad-container',
-        '.ad-wrapper',
-        '.ad-box',
-        '.ad-label',
-        '[class*="advertisement"]',
-        '[class*="sponsored"]',
-        '[class^="ad-"]',
-        '[class*="-ad-"]',
-        '[id^="ad-"]',
-        '[id*="-ad-"]',
-        '[class~="ads"]',          // Exact word match: class="top ads" (safe)
-        '[class~="ad"]',           // Exact word match: class="banner ad" (safe)
-        '[id$="-ads"]',            // Ends with -ads (safe)
-        '[class$="-ads"]',         // Ends with -ads (safe)
-        '[class*="_ads_"]',        // Underscore delimited (safe)
-        'div[data-adname]',
         'div[data-google-query-id]',
-        '[id^="teads"]',
-        '[class^="teads"]',
-        '[class*="video-ad"]',
-        '[id*="video-ad"]',
-        '[id^="vpaid"]',
-        'div.connatix',
-        '.vjs-ad-playing',
-        'div[id^="yvpub"]',
-        'div[id^="popin_"]',
-        'div[id^="microad_"]',
-        'div[id^="fluct_"]',
-        '[id^="taboola-"]',
-        '[id^="outbrain_widget"]',
+        // Generic (hyphen-separated)
+        '.nt-03', '.mod-ad', '.im-ad-unit',
+        '.ad-slot', '.ad-banner', '.ad-container', '.ad-wrapper', '.ad-box', '.ad-label',
+        '[class*="advertisement"]', '[class*="sponsored"]',
+        '[class^="ad-"]', '[class*="-ad-"]',
+        '[id^="ad-"]', '[id*="-ad-"]',
+        '[class~="ads"]', '[class~="ad"]',
+        '[id$="-ads"]', '[class$="-ads"]', '[class*="_ads_"]',
+        'div[data-adname]',
+        // Generic (underscore-separated)
+        '[class*="ad_box"]', '[class*="ad_area"]', '[class*="ad_unit"]',
+        '[class*="ad_wrap"]', '[class*="ad_space"]', '[class*="ad_block"]',
+        '[id*="ad_box"]', '[id*="ad_area"]', '[id*="ad_unit"]',
+        '[id*="ad_wrap"]', '[id*="ad_space"]',
+        // Overlay / Interstitial
+        '[class*="overlay-ad"]', '[class*="interstitial"]', '[id*="interstitial"]',
+        '[class*="popup-ad"]', '[class*="modal-ad"]',
+        // Attribute-based
+        '[data-ad]', '[data-ads]', '[data-ad-unit]', '[data-ad-slot]',
+        '[data-advertisement]', '[data-sponsor]', '[data-sponsored]',
+        // AMP ads
+        'amp-ad', 'amp-embed', 'amp-sticky-ad',
+        // Video ads (selector-based)
+        'video[autoplay][muted]:not([controls])',
+        '[id^="vpaid"]', '[class*="video-ad"]', '[id*="video-ad"]',
+        '[class*="video_ad"]', '[id*="video_ad"]',
+        '[class*="videoAd"]', '[id*="videoAd"]',
+        '.vjs-ad-playing', '.vjs-ad-loading', '.vjs-ad-container',
+        '.jw-ad-container', '.jw-plugin-googima', '[class*="jwplayer"][class*="ad"]',
+        '.mw-ad', '[class*="medianet"]',
+        // Connatix / Vidazoo / SpringServe video ad players
+        'div.connatix', '[id^="connatix"]', '[class*="connatix"]',
+        '[id^="vidazoo"]', '[class*="vidazoo"]',
+        '[id^="springserve"]', '[class*="springserve"]',
+        '[id^="instream"]', '[class*="instream-ad"]',
+        // Teads / Outbrain / Taboola
+        '[id^="teads"]', '[class^="teads"]',
+        '[id^="taboola-"]', '#taboola-below-article-thumbnails',
+        '[id^="outbrain_widget"]', '[class*="outbrain"]',
+        // iframe ad sources
+        'iframe[src*="doubleclick.net"]',
+        'iframe[src*="googlesyndication.com"]',
         'iframe[src*="criteo.com"]',
         'iframe[src*="outbrain.com"]',
-        'iframe[src*="taboola.com"]'
+        'iframe[src*="taboola.com"]',
+        'iframe[src*="amazon-adsystem.com"]',
+        'iframe[src*="nend.net"]',
+        'iframe[src*="zucks.net"]',
+        'iframe[src*="imobile.co.jp"]',
+        'iframe[src*="geniee"]',
+        'iframe[src*="fluct.jp"]',
+        'iframe[src*="microad"]',
+        'iframe[src*="connatix.com"]',
+        'iframe[src*="vidazoo.com"]',
+        'iframe[src*="spotxchange.com"]',
+        'iframe[src*="springserve.com"]',
+        // Japanese ad networks
+        '[id^="popin_"]',
+        '[id^="microad_"]', '[class*="microad"]', '[id*="microad"]',
+        '[id^="fluct_"]',   '[class*="fluct_"]',  '[id*="fluct"]',
+        '[class*="nend"]',  '[id*="nend"]',
+        '[class*="zucks"]', '[id*="zucks"]',
+        '[class*="i-mobile"]', '[id*="i-mobile"]',
+        '[class*="imobile"]',  '[id*="imobile"]',
+        '[class*="geniee"]',   '[id*="geniee"]',
+        '[class*="adstir"]',   '[id*="adstir"]',
+        '[class*="admatrix"]', '[id*="admatrix"]',
+        '[class*="yj-ad"]',    '[id*="yj-ad"]',   '[id^="yj-ad"]',
+        '[class*="nobnag"]',   '[id*="nobnag"]',
+        '[class*="logly"]',    '[id*="logly"]',
+        '[id^="yvpub"]',
+        // SmartNews / Criteo / AppNexus
+        '[class*="smartnews-ad"]',
+        '[class*="criteo"]', '[id*="criteo"]',
+        '[class*="appnexus"]',
+        '[class*="prebid"]',
+        '[class*="connatix"]',
+        // Japanese affiliate networks
+        '[class*="a8net"]', '[id*="a8net"]',
+        '[class*="valuecommerce"]', '[id*="valuecommerce"]',
+        '[class*="accesstrade"]', '[id*="accesstrade"]',
+        '[class*="rentracks"]', '[id*="rentracks"]'
     ];
-    
-    function clean() {
+
+    // Build CSS rule for all static selectors — uses stylesheet so ad scripts
+    // cannot override via element.style
+    var AD_STYLE_ID = 'pe-ad-hide';
+
+    function ensureStylesheet() {
+        var style = document.getElementById(AD_STYLE_ID);
+        if (!style) {
+            style = document.createElement('style');
+            style.id = AD_STYLE_ID;
+            (document.head || document.documentElement).appendChild(style);
+        }
+        return style;
+    }
+
+    // Add a selector to the pe-ad-hide stylesheet (avoids duplicates)
+    var _addedSelectors = window._peAdHiddenSelectors || {};
+    window._peAdHiddenSelectors = _addedSelectors;
+
+    function addCssHideRule(sel) {
+        if (_addedSelectors[sel]) return;
+        _addedSelectors[sel] = true;
+        var style = ensureStylesheet();
+        style.textContent += sel + '{display:none!important;height:0!important;max-height:0!important;margin:0!important;padding:0!important;overflow:hidden!important;}\n';
+    }
+
+    // Apply all static selectors via CSS at once
+    function applyStaticRules() {
+        var style = ensureStylesheet();
+        var rules = '';
         selectors.forEach(function(sel) {
-            document.querySelectorAll(sel).forEach(function(el) {
-                el.style.setProperty('display', 'none', 'important');
-                el.style.setProperty('height', '0', 'important');
-                el.style.setProperty('max-height', '0', 'important');
-                el.style.setProperty('margin', '0', 'important');
-                el.style.setProperty('padding', '0', 'important');
-                el.style.setProperty('overflow', 'hidden', 'important');
-                
-                // Hide parent wrappers that are left empty or just contain ad labels
-                var parent = el.parentElement;
-                var depth = 0;
-                while (parent && parent !== document.body && depth < 3) {
-                    var text = parent.textContent.replace(/Advertisement|広告|PR|Sponsored|スポンサーリンク/g, '').trim();
-                    if (text === '') {
-                        parent.style.setProperty('display', 'none', 'important');
-                        parent.style.setProperty('height', '0', 'important');
-                        parent.style.setProperty('max-height', '0', 'important');
-                        parent.style.setProperty('margin', '0', 'important');
-                        parent.style.setProperty('padding', '0', 'important');
-                        parent.style.setProperty('overflow', 'hidden', 'important');
-                        parent = parent.parentElement;
-                        depth++;
-                    } else {
-                        break;
-                    }
-                }
-            });
+            if (!_addedSelectors[sel]) {
+                _addedSelectors[sel] = true;
+                rules += sel + '{display:none!important;height:0!important;max-height:0!important;margin:0!important;padding:0!important;overflow:hidden!important;}\n';
+            }
         });
-        
+        if (rules) style.textContent += rules;
+    }
+
+    // Stop video playback inside an element
+    function pauseVideos(el) {
+        el.querySelectorAll('video').forEach(function(v) {
+            try { v.pause(); v.src = ''; v.load(); } catch(e) {}
+        });
+        if (el.tagName === 'VIDEO') {
+            try { el.pause(); el.src = ''; el.load(); } catch(e) {}
+        }
+    }
+
+    // Mark an element with a data attribute so CSS hides it (more resilient than inline style)
+    function markAdElement(el) {
+        if (el.getAttribute('data-pe-ad-hidden')) return;
+        el.setAttribute('data-pe-ad-hidden', '1');
+        pauseVideos(el);
+    }
+
+    // Ensure the data-attribute CSS rule exists
+    function ensureDataAttrRule() {
+        addCssHideRule('[data-pe-ad-hidden]');
+    }
+
+    function clean() {
+        ensureDataAttrRule();
+
+        // Mark elements matched by selectors
+        selectors.forEach(function(sel) {
+            try {
+                document.querySelectorAll(sel).forEach(function(el) {
+                    markAdElement(el);
+                    // Hide parent wrappers that are left empty or just contain ad labels
+                    var parent = el.parentElement;
+                    var depth = 0;
+                    while (parent && parent !== document.body && depth < 5) {
+                        var text = parent.textContent.replace(/Advertisement|広告|PR|Sponsored|スポンサーリンク/g, '').trim();
+                        if (text === '') {
+                            markAdElement(parent);
+                            parent = parent.parentElement;
+                            depth++;
+                        } else {
+                            break;
+                        }
+                    }
+                });
+            } catch(e) {}
+        });
+
+        // Floating corner video ads (position:fixed, small-ish, contains video)
+        var vw = window.innerWidth;
+        var vh = window.innerHeight;
+        document.querySelectorAll('div, section, aside, figure').forEach(function(el) {
+            if (el.getAttribute('data-pe-ad-hidden')) return;
+            var cs = window.getComputedStyle(el);
+            if (cs.position !== 'fixed' && cs.position !== 'absolute') return;
+            var zi = parseInt(cs.zIndex) || 0;
+            if (zi < 100) return;
+            var rect = el.getBoundingClientRect();
+            if (rect.width <= 0 || rect.height <= 0) return;
+            var isCornerPlayer = rect.width <= vw * 0.6 && rect.height <= vh * 0.4 &&
+                (rect.right >= vw * 0.5 || rect.left <= vw * 0.5);
+            var hasVideo = el.querySelector('video') !== null;
+            if (isCornerPlayer && hasVideo) {
+                var inner = el.innerHTML;
+                if (inner.indexOf('ad') !== -1 || inner.indexOf('Ad') !== -1 ||
+                    inner.indexOf('doubleclick') !== -1 || inner.indexOf('googlesyndication') !== -1 ||
+                    inner.indexOf('connatix') !== -1 || inner.indexOf('vidazoo') !== -1 ||
+                    el.querySelector('[class*="ad"]') || el.querySelector('[id*="ad"]')) {
+                    markAdElement(el);
+                }
+            }
+        });
+
+        // Fixed/sticky bottom banners
+        document.querySelectorAll('div, section, aside').forEach(function(el) {
+            if (el.getAttribute('data-pe-ad-hidden')) return;
+            var cs = window.getComputedStyle(el);
+            if (cs.position !== 'fixed' && cs.position !== 'sticky') return;
+            var bottom = parseFloat(cs.bottom);
+            if (isNaN(bottom) || bottom > 120) return;
+            var rect = el.getBoundingClientRect();
+            if (rect.height <= 0 || rect.height > 300) return;
+            if (rect.width < vw * 0.35) return;
+            if (el.querySelector('iframe') ||
+                el.querySelector('video[autoplay]') ||
+                el.querySelector('[class*="ad"]') ||
+                el.querySelector('[id*="ad"]') ||
+                el.querySelector('ins') ||
+                el.innerHTML.indexOf('doubleclick') !== -1 ||
+                el.innerHTML.indexOf('googlesyndication') !== -1) {
+                markAdElement(el);
+            }
+        });
+
+        // Full-screen / large overlay ads
+        document.querySelectorAll('div, section').forEach(function(el) {
+            if (el.getAttribute('data-pe-ad-hidden')) return;
+            var cs = window.getComputedStyle(el);
+            if (cs.position !== 'fixed') return;
+            var rect = el.getBoundingClientRect();
+            if (rect.width < vw * 0.7 || rect.height < vh * 0.3) return;
+            var zi = parseInt(cs.zIndex) || 0;
+            if (zi < 1000) return;
+            var hasAdContent = el.querySelector('video[autoplay]') ||
+                el.querySelector('iframe[src*="ad"]') ||
+                el.querySelector('.adsbygoogle') ||
+                el.innerHTML.indexOf('doubleclick') !== -1;
+            if (hasAdContent) markAdElement(el);
+        });
+
         // Hide standalone ad labels
         var exactTexts = ['Advertisement', '広告', 'PR', 'Sponsored', 'スポンサーリンク'];
         ['span', 'div', 'p', 'h6', 'small', 'aside'].forEach(function(tag) {
             document.querySelectorAll(tag).forEach(function(el) {
-                if (el.childElementCount <= 1) { // allow max 1 empty child
+                if (el.getAttribute('data-pe-ad-hidden')) return;
+                if (el.childElementCount <= 1) {
                     var text = el.textContent.trim();
                     if (exactTexts.indexOf(text) !== -1) {
-                        el.style.setProperty('display', 'none', 'important');
-                        el.style.setProperty('height', '0', 'important');
-                        el.style.setProperty('margin', '0', 'important');
-                        el.style.setProperty('padding', '0', 'important');
+                        markAdElement(el);
                         var p = el.parentElement;
                         if (p && p.textContent.trim() === text) {
-                            p.style.setProperty('display', 'none', 'important');
-                            p.style.setProperty('height', '0', 'important');
-                            p.style.setProperty('margin', '0', 'important');
-                            p.style.setProperty('padding', '0', 'important');
+                            markAdElement(p);
                         }
                     }
                 }
             });
         });
+
+        // Native ads with "広告" disclosure badge
+        document.querySelectorAll('span, div, p, small, section, aside, li').forEach(function(label) {
+            if (label.getAttribute('data-pe-ad-hidden')) return;
+            var t = label.textContent.trim();
+            if (!t.startsWith('広告') || t.length > 12) return;
+            var candidate = label.parentElement;
+            var depth = 0;
+            while (candidate && candidate !== document.body && depth < 8) {
+                if (candidate.getAttribute('data-pe-ad-hidden')) break;
+                var rect = candidate.getBoundingClientRect();
+                if (rect.width >= vw * 0.6 && rect.height >= 80) {
+                    markAdElement(candidate);
+                    break;
+                }
+                candidate = candidate.parentElement;
+                depth++;
+            }
+        });
     }
 
-    // Run immediately
+    // Override HTMLVideoElement.prototype.play to intercept ad video playback
+    if (!window._peVideoPlayOverridden) {
+        window._peVideoPlayOverridden = true;
+        var origPlay = HTMLVideoElement.prototype.play;
+        HTMLVideoElement.prototype.play = function() {
+            var el = this;
+            var parent = el.parentElement;
+            var depth = 0;
+            while (parent && parent !== document.body && depth < 6) {
+                var cls = (parent.className || '').toLowerCase();
+                var id  = (parent.id || '').toLowerCase();
+                if (cls.indexOf('ad') !== -1 || id.indexOf('ad') !== -1 ||
+                    cls.indexOf('connatix') !== -1 || cls.indexOf('vidazoo') !== -1 ||
+                    cls.indexOf('vjs-ad') !== -1 || cls.indexOf('jw-ad') !== -1 ||
+                    id.indexOf('connatix') !== -1 || id.indexOf('vidazoo') !== -1) {
+                    el.muted = true;
+                    el.setAttribute('data-pe-ad-hidden', '1');
+                    return Promise.resolve();
+                }
+                parent = parent.parentElement;
+                depth++;
+            }
+            return origPlay.apply(el, arguments);
+        };
+    }
+
+    // Apply CSS rules for all static selectors
+    applyStaticRules();
+
+    // Run heuristic clean immediately
     clean();
 
-    // Run persistently (MutationObserver)
+    // Run persistently (MutationObserver) — DEBOUNCED to prevent flickering
     if (!window._peAdObserver) {
+        var _peCleanTimer = null;
+        var _peIsCleaning = false;
         window._peAdObserver = new MutationObserver(function(mutations) {
-            clean();
+            // Skip if we are the ones making changes
+            if (_peIsCleaning) return;
+            // Debounce: batch rapid DOM changes into a single clean() call
+            if (_peCleanTimer) clearTimeout(_peCleanTimer);
+            _peCleanTimer = setTimeout(function() {
+                _peIsCleaning = true;
+                clean();
+                _peIsCleaning = false;
+            }, 200);
         });
         window._peAdObserver.observe(document.body, { childList: true, subtree: true });
     }
-    
-    // Also add interval-based re-cleaning for stubborn ads (only when manually triggered)
+
+    // Reduced interval (6 runs × 10s = 60s total) for stubborn ads that get dynamically re-injected
     if (!window._peAdInterval) {
         var cleanCount = 0;
         window._peAdInterval = setInterval(function() {
             clean();
             cleanCount++;
-            if (cleanCount >= 15) {
+            if (cleanCount >= 6) {
                 clearInterval(window._peAdInterval);
                 window._peAdInterval = null;
             }
-        }, 2000);
+        }, 10000);
     }
 };
 """.trimIndent()
@@ -156,11 +373,11 @@ window.toggleTextOnly = function(enable) {
         if (!style) {
             style = document.createElement('style');
             style.id = STYLE_ID;
-            style.innerHTML = 
+            style.innerHTML =
                 'img, video, iframe, svg, canvas { display: none !important; }' +
                 'div, section, article, p, span, h1, h2, h3, h4, h5, h6, li, a { background: white !important; color: black !important; }' +
                 'body { background-color: white !important; color: black !important; font-family: sans-serif !important; }';
-            document.head.appendChild(style);
+            (document.head || document.documentElement).appendChild(style);
         }
     } else {
         if (style) style.remove();
@@ -178,7 +395,7 @@ window.toggleGrayscale = function(enable) {
             style = document.createElement('style');
             style.id = STYLE_ID;
             style.innerHTML = 'html { filter: grayscale(100%) !important; }';
-            document.head.appendChild(style);
+            (document.head || document.documentElement).appendChild(style);
         }
     } else {
         if (style) style.remove();
@@ -225,9 +442,9 @@ val toggleRemoveElementModeJs = """
         return JSON.stringify(window._peRemovedSelectors);
     };
 
-    window.peApplyRemovedSelectors = function(jsonStr) {
+    window.peApplyRemovedSelectors = function(input) {
         try {
-            var selectors = JSON.parse(jsonStr);
+            var selectors = (typeof input === 'string') ? JSON.parse(input) : input;
             selectors.forEach(function(sel) {
                 if (window._peRemovedSelectors.indexOf(sel) === -1) {
                     window._peRemovedSelectors.push(sel);
@@ -281,7 +498,7 @@ val toggleRemoveElementModeJs = """
     if (!document.getElementById(STYLE_ID)) {
         var style = document.createElement('style');
         style.id = STYLE_ID;
-        style.innerHTML = 
+        style.innerHTML =
             '.pe-remove-highlight { outline: 3px solid #f44336 !important; background: rgba(244, 67, 54, 0.15) !important; }' +
             '.pe-remove-active { cursor: crosshair !important; }' +
             '.pe-remove-confirm { position:fixed; bottom:100px; left:50%; transform:translateX(-50%); z-index:2147483647; background:#fff; border-radius:12px; box-shadow:0 4px 20px rgba(0,0,0,0.3); padding:12px 8px; display:flex; gap:8px; }' +
@@ -289,7 +506,7 @@ val toggleRemoveElementModeJs = """
             '.pe-remove-btn-single { background:#f44336; color:white; }' +
             '.pe-remove-btn-below { background:#ff9800; color:white; }' +
             '.pe-remove-btn-cancel { background:#9e9e9e; color:white; }';
-        document.head.appendChild(style);
+        (document.head || document.documentElement).appendChild(style);
     }
     
     var confirmBar = null;
@@ -772,10 +989,12 @@ val marqueeSelectionJs = """
         links.forEach(function(link) {
             var href = link.href;
             if (!href || href.startsWith('javascript:') || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:')) return;
-            try { 
-                var parsed = new URL(href);
-            } catch(e) {}
-            
+            try {
+                new URL(href);
+            } catch(e) {
+                return; // 無効な URL はスキップ
+            }
+
             // Ignore invisible wrappers
             var style = window.getComputedStyle(link);
             if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return;
@@ -829,7 +1048,183 @@ val marqueeSelectionJs = """
 """.trimIndent()
 
 
-// 5. Image Adjustment (Fit to Screen)
+// 5a. Force-load lazy images (data-src, loading="lazy", IntersectionObserver triggers)
+val forceLoadLazyImagesJs = """
+(function() {
+    if (window._peForceLoadRunning) return;
+    window._peForceLoadRunning = true;
+
+    var lazyAttrs = [
+        'data-src', 'data-lazy-src', 'data-original', 'data-lazy',
+        'data-echo', 'data-url', 'data-img-src', 'data-image-src',
+        'data-lazyload', 'data-source', 'data-pagespeed-lazy-src',
+        'data-cfsrc', 'data-wp-src', 'data-hi-res-src',
+        'data-full-src', 'data-actual-src', 'data-retina-src',
+        'data-srcset', 'data-lazy-srcset', 'data-srcset-webp'
+    ];
+
+    // Check if a value looks like a valid image URL (absolute, protocol-relative, or relative path)
+    function isValidSrc(val) {
+        if (!val || val.length === 0) return false;
+        // Reject data URIs for placeholder images (tiny base64 placeholders)
+        if (val.indexOf('data:') === 0) {
+            // Allow real data: images (> 200 chars are likely actual content)
+            return val.length > 200;
+        }
+        // Reject javascript: and # anchors
+        if (val.indexOf('javascript:') === 0 || val === '#') return false;
+        // Accept absolute URLs, protocol-relative, absolute paths, and relative paths
+        return true;
+    }
+
+    // Override IntersectionObserver.prototype.observe so future observations
+    // immediately fire the callback with isIntersecting=true
+    if (!window._peIOPatched) {
+        window._peIOPatched = true;
+        try {
+            var _origObserve = IntersectionObserver.prototype.observe;
+            IntersectionObserver.prototype.observe = function(target) {
+                _origObserve.call(this, target);
+                var self = this;
+                // Find the callback: try __pe_cb first, then fall back to internal callback property
+                var cb = self['__pe_cb'] || self['callback'] || null;
+                // Some browsers store callback in a different internal slot; try takeRecords + manual trigger
+                if (cb) {
+                    requestAnimationFrame(function() {
+                        try {
+                            var rect = target.getBoundingClientRect();
+                            cb([{
+                                isIntersecting: true, intersectionRatio: 1,
+                                target: target,
+                                boundingClientRect: rect, intersectionRect: rect,
+                                rootBounds: null, time: performance.now()
+                            }], self);
+                        } catch(e) {}
+                    });
+                } else {
+                    // Fallback: manually disconnect and re-observe to force trigger
+                    requestAnimationFrame(function() {
+                        try {
+                            target.style.visibility = target.style.visibility || '';
+                            // Force a style recalculation to trigger observer
+                            void target.offsetHeight;
+                        } catch(e) {}
+                    });
+                }
+            };
+            // Intercept constructor to capture callback reference
+            var _NativeIO = window.IntersectionObserver;
+            window.IntersectionObserver = function(cb, opts) {
+                var io = new _NativeIO(cb, opts);
+                io['__pe_cb'] = cb;
+                return io;
+            };
+            window.IntersectionObserver.prototype = _NativeIO.prototype;
+        } catch(e) {}
+    }
+
+    // Extract images from <noscript> tags (some sites put real images inside noscript as JS-off fallback)
+    function extractNoscriptImages() {
+        document.querySelectorAll('noscript').forEach(function(ns) {
+            var content = ns.textContent || ns.innerHTML || '';
+            if (content.indexOf('<img') === -1) return;
+            // Check if the previous sibling is an img placeholder
+            var prevImg = ns.previousElementSibling;
+            if (prevImg && prevImg.tagName === 'IMG') {
+                // Parse the noscript content to extract src
+                var m = content.match(/src=["']([^"']+)["']/);
+                if (m && m[1] && isValidSrc(m[1])) {
+                    if (!prevImg.src || prevImg.src.indexOf('data:') === 0 || prevImg.naturalWidth === 0) {
+                        prevImg.src = m[1];
+                    }
+                }
+            }
+        });
+    }
+
+    function forceLoad() {
+        // Promote data-* attributes to src/srcset
+        document.querySelectorAll('img').forEach(function(img) {
+            img.removeAttribute('loading');
+            for (var i = 0; i < lazyAttrs.length; i++) {
+                var attr = lazyAttrs[i];
+                var val = img.getAttribute(attr);
+                if (!val || !isValidSrc(val)) continue;
+                if (attr.indexOf('srcset') !== -1) {
+                    if (img.srcset !== val) img.srcset = val;
+                } else {
+                    if (img.src !== val) img.src = val;
+                }
+                break;
+            }
+            // Handle CSS background-image lazy loading (common pattern: img with no src, bg set by JS)
+            if (!img.src || img.src === '' || img.src === window.location.href) {
+                var bg = window.getComputedStyle(img).backgroundImage;
+                if (bg && bg !== 'none') {
+                    var m = bg.match(/url\(["']?([^"')]+)["']?\)/);
+                    if (m && m[1] && isValidSrc(m[1])) {
+                        img.src = m[1];
+                    }
+                }
+            }
+        });
+
+        // Promote data-* on <source> inside <picture>
+        document.querySelectorAll('picture source').forEach(function(source) {
+            for (var i = 0; i < lazyAttrs.length; i++) {
+                var val = source.getAttribute(lazyAttrs[i]);
+                if (val && isValidSrc(val)) {
+                    if (source.srcset !== val) source.srcset = val;
+                    break;
+                }
+            }
+        });
+
+        // Extract noscript images
+        extractNoscriptImages();
+
+        // Trigger scroll/resize events to activate IntersectionObserver-based loaders
+        // Use requestAnimationFrame to allow layout to complete between scroll events
+        window.dispatchEvent(new Event('scroll', {bubbles: true}));
+        window.dispatchEvent(new Event('resize'));
+
+        // Trigger lazy loaders on scrollable containers (limit to reasonable count)
+        var scrollables = document.querySelectorAll('[style*="overflow"], [class*="scroll"], main, article, .content, #content');
+        scrollables.forEach(function(el) {
+            if (el.scrollHeight > el.clientHeight + 50) {
+                el.dispatchEvent(new Event('scroll', {bubbles: true}));
+            }
+        });
+    }
+
+    // Staggered force-load with increasing delays
+    forceLoad();
+    setTimeout(forceLoad, 500);
+    setTimeout(forceLoad, 1500);
+    setTimeout(forceLoad, 4000);
+    setTimeout(forceLoad, 8000);
+    setTimeout(forceLoad, 15000);
+
+    // Watch for dynamically added images (debounced to avoid conflicts with ad removal)
+    var _imgDebounceTimer = null;
+    var _imgMutObs = new MutationObserver(function(mutations) {
+        // Skip mutations from ad removal (pe-ad-hide style changes)
+        var isAdChange = false;
+        for (var i = 0; i < mutations.length; i++) {
+            var t = mutations[i].target;
+            if (t && t.id === 'pe-ad-hide') { isAdChange = true; break; }
+        }
+        if (isAdChange) return;
+        // Debounce: batch rapid mutations into a single forceLoad call
+        if (_imgDebounceTimer) clearTimeout(_imgDebounceTimer);
+        _imgDebounceTimer = setTimeout(forceLoad, 300);
+    });
+    _imgMutObs.observe(document.body, {childList: true, subtree: true, attributes: true, attributeFilter: ['data-src', 'data-lazy-src', 'data-original', 'src']});
+    setTimeout(function() { _imgMutObs.disconnect(); }, 20000);
+})();
+""".trimIndent()
+
+// 5b. Image Adjustment (Fit to Screen)
 val smartFitImagesJs = """
 (function() {
     var images = document.querySelectorAll('img');
@@ -854,7 +1249,7 @@ window.toggleNoBackground = function(enable) {
             style = document.createElement('style');
             style.id = STYLE_ID;
             style.innerHTML = '* { background: transparent !important; background-color: transparent !important; } body { background: white !important; }';
-            document.head.appendChild(style);
+            (document.head || document.documentElement).appendChild(style);
         }
     } else {
         if (style) style.remove();

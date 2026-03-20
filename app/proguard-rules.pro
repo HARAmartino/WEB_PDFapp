@@ -5,11 +5,10 @@
 # For more details, see
 #   http://developer.android.com/guide/developing/tools/proguard.html
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
--keepclassmembers class com.example.printedit.ui.PrintReadyInterface {
-   public *;
+# JavascriptInterface メソッドを ProGuard から保護する
+# @JavascriptInterface アノテーションだけでは不十分なため、明示的に keep する
+-keepclassmembers class com.example.printedit.ui.ImageLoadInterface {
+   @android.webkit.JavascriptInterface public *;
 }
 
 # Keep WebView related classes to prevent obfuscation issues

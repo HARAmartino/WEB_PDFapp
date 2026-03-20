@@ -1,7 +1,11 @@
 package com.example.printedit.ui
 
+import android.app.Activity
+import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,6 +26,26 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.filled.Delete
 import com.example.printedit.data.SettingsRepository
 import com.example.printedit.data.PresetRepository
+
+/**
+ * SHOW_ADVANCED フラグ付きのフォルダ選択コントラクト。
+ * 標準の OpenDocumentTree では Google Drive 等のクラウドストレージが表示されないため
+ * カスタムインテントを生成するコントラクトを使用する。
+ */
+private class FolderPickerContract : ActivityResultContract<Unit, Uri?>() {
+    override fun createIntent(context: Context, input: Unit): Intent =
+        Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+            // SHOW_ADVANCED は SD カード/USB 用のフラグであり Google Drive には無効。
+            // 指定するとデバイスストレージビューに固定されてしまうため削除。
+            // EXTRA_LOCAL_ONLY=false でクラウドストレージ（Google Drive 等）を許可する。
+            putExtra(Intent.EXTRA_LOCAL_ONLY, false)
+            addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        }
+
+    override fun parseResult(resultCode: Int, intent: Intent?): Uri? =
+        if (resultCode == Activity.RESULT_OK) intent?.data else null
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,7 +70,7 @@ fun SettingsScreen(
     // PDF Batch Save Destination
     var customSaveUri by remember { mutableStateOf(settingsRepository.customSaveUri) }
     val folderPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocumentTree()
+        contract = FolderPickerContract()
     ) { uri ->
         if (uri != null) {
             context.contentResolver.takePersistableUriPermission(
@@ -130,6 +154,7 @@ fun SettingsScreen(
 
             // Section 2: Menu Customization
             item {
+                @Suppress("DEPRECATION")
                 Divider()
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
@@ -172,6 +197,7 @@ fun SettingsScreen(
 
             // Section 3: PDF Batch Save Destination
             item {
+                @Suppress("DEPRECATION")
                 Divider()
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
@@ -211,10 +237,10 @@ fun SettingsScreen(
                     )
                 }
                 OutlinedButton(
-                    onClick = { folderPickerLauncher.launch(null) },
+                    onClick = { folderPickerLauncher.launch(Unit) },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("保存先フォルダを変更する (Google Drive等)")
+                    Text("保存先フォルダを変更する")
                 }
                 Text(
                     text = "※ 一度選択すれば、以後はダイアログなしで自動保存されます。",
@@ -226,6 +252,7 @@ fun SettingsScreen(
 
             // Section 4: Presets
             item {
+                @Suppress("DEPRECATION")
                 Divider()
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
@@ -256,6 +283,7 @@ fun SettingsScreen(
                 onDismiss = { showPresetManager = false }
             )
         }
+
     }
 }
 
@@ -297,6 +325,7 @@ fun PresetManagerDialog(
                                         Icon(Icons.Filled.Delete, contentDescription = "削除", tint = MaterialTheme.colorScheme.error)
                                     }
                                 }
+                                @Suppress("DEPRECATION")
                                 Divider(modifier = Modifier.padding(vertical = 4.dp))
                                 
                                 val tags = mutableListOf<String>()

@@ -34,18 +34,73 @@ import com.example.printedit.data.SavedUrlRepository
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import androidx.compose.runtime.rememberCoroutineScope
+
+/**
+ * URLのHTMLから<title>タグを取得する。
+ * 最初の8KBだけ読み込むことでネットワーク消費を最小化する。
+ * 取得できない場合は null を返す。
+ */
+private suspend fun fetchPageTitle(url: String): String? = withContext(Dispatchers.IO) {
+    var connection: java.net.HttpURLConnection? = null
+    try {
+        connection = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+        connection.connectTimeout = 5000
+        connection.readTimeout = 5000
+        connection.instanceFollowRedirects = true
+        connection.setRequestProperty(
+            "User-Agent",
+            "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 Chrome/120.0.0.0 Mobile Safari/537.36"
+        )
+        connection.connect()
+
+        // 文字コードをレスポンスヘッダから取得、なければ UTF-8
+        val charset = connection.contentType
+            ?.let { Regex("charset=([\\w-]+)", RegexOption.IGNORE_CASE).find(it)?.groupValues?.get(1) }
+            ?: "UTF-8"
+
+        // 最初の 8KB だけ読む（<title> は必ずこの範囲内にある）
+        val buffer = ByteArray(8192)
+        val bytesRead = connection.inputStream.use { it.read(buffer) }
+
+        if (bytesRead <= 0) return@withContext null
+        val partial = String(buffer, 0, bytesRead, charset(charset))
+
+        Regex("<title[^>]*>([^<]{1,200})</title>", RegexOption.IGNORE_CASE)
+            .find(partial)
+            ?.groupValues?.get(1)
+            ?.trim()
+            // HTMLエンティティの基本的なデコード
+            ?.replace("&amp;", "&")
+            ?.replace("&lt;", "<")
+            ?.replace("&gt;", ">")
+            ?.replace("&quot;", "\"")
+            ?.replace("&#39;", "'")
+            ?.ifBlank { null }
+    } catch (_: Exception) {
+        null
+    } finally {
+        connection?.disconnect()
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     onSearch: (String) -> Unit,
-    onOpenSettings: () -> Unit
+    onOpenSettings: () -> Unit,
+    refreshKey: Any = Unit  // onNewIntent 等でリストを強制更新するためのキー
 ) {
     var searchText by remember { mutableStateOf("") }
     val focusManager = LocalFocusManager.current
     val context = LocalContext.current
     val savedUrlRepo = remember { SavedUrlRepository(context) }
-    var savedUrls by remember { mutableStateOf(savedUrlRepo.getAll()) }
+    // refreshKey が変わるたびに savedUrls を再読み込みする
+    var savedUrls by remember(refreshKey) { mutableStateOf(savedUrlRepo.getAll()) }
+    val coroutineScope = rememberCoroutineScope()
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -130,11 +185,21 @@ fun HomeScreen(
                                 input.contains(".") && !input.contains(" ") -> "https://$input"
                                 else -> "https://www.google.com/search?q=${Uri.encode(input)}"
                             }
-                            savedUrlRepo.save(url, "入力したURL")
+                            // まずホスト名で即時保存してUIを更新
+                            val placeholder = try { Uri.parse(url).host ?: url } catch (_: Exception) { url }
+                            savedUrlRepo.save(url, placeholder)
                             savedUrls = savedUrlRepo.getAll()
                             searchText = ""
                             focusManager.clearFocus()
                             android.widget.Toast.makeText(context, "URLを保存しました", android.widget.Toast.LENGTH_SHORT).show()
+                            // バックグラウンドでページタイトルを取得して上書き
+                            coroutineScope.launch {
+                                val title = fetchPageTitle(url)
+                                if (title != null) {
+                                    savedUrlRepo.save(url, title)
+                                    savedUrls = savedUrlRepo.getAll()
+                                }
+                            }
                         }) {
                             Icon(Icons.Default.BookmarkBorder, contentDescription = "Save URL", tint = MaterialTheme.colorScheme.primary)
                         }
