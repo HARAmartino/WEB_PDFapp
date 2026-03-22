@@ -1,3 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">WEB_PDF</string>
+
+    <!-- HomeScreen -->
+    <string name="search_hint">検索、またはURLを入力</string>
+    <string name="url_saved">URLを保存しました</string>
+    <string name="bookmark_list_title">📌 印刷待ち (%1$d件)</string>
+    <string name="delete_all">すべて削除</string>
+    <string name="untitled">無題</string>
+    <string name="shared_link">共有されたリンク</string>
+
+    <!-- Settings -->
+    <string name="settings">設定</string>
+    <string name="general_settings">全般設定</string>
+    <string name="aggressive_ad_block">強力な広告ブロック</string>
+    <string name="aggressive_ad_block_desc">画面を覆う広告や、後から読み込まれる広告を自動で削除します。</string>
+    <string name="menu_fix">メニュー表示の修正</string>
+    <string name="menu_fix_desc">メニューが開かないサイトを修正します。（サイトのデザインが変わる場合があります）</string>
+    <string name="auto_image_adjust">画像の自動調整</string>
+    <string name="auto_image_adjust_desc">ページ読み込み時に、大きな画像を自動で画面サイズに合わせます。</string>
+    <string name="desktop_mode">PC版サイトを表示</string>
+    <string name="desktop_mode_desc">スマートフォン向けではなく、パソコン向けのレイアウトで表示します。（再読み込み後に反映）</string>
+    <string name="menu_customization">編集メニューのカスタマイズ</string>
+    <string name="menu_customization_desc">メニューボタンを押したときに表示する機能を選択してください。</string>
+    <string name="batch_pdf_destination">一括PDF保存先</string>
+    <string name="batch_pdf_destination_desc">バッチ印刷で保存するフォルダを設定します。デフォルトはダウンロード内の WEB_PDF フォルダです。</string>
+    <string name="current_custom_folder">現在: カスタムフォルダ (設定済み)</string>
+    <string name="reset_to_default_folder">デフォルト (Downloads/WEB_PDF) に戻す</string>
+    <string name="current_default_folder">現在: Downloads/WEB_PDF (デフォルト)</string>
+    <string name="change_save_folder">保存先フォルダを変更する</string>
+    <string name="auto_save_note">※ 一度選択すれば、以後はダイアログなしで自動保存されます。</string>
+    <string name="preset_management">プリセット管理</string>
+    <string name="preset_management_desc">保存したプリセットの内容確認と削除を行います。</string>
+    <string name="view_delete_presets">保存済みプリセットの詳細を確認・削除</string>
+    <string name="saved_presets_title">保存済みプリセット</string>
+    <string name="no_presets_saved">保存されたプリセットはありません</string>
+    <string name="active_settings">有効な設定: %1$s</string>
+    <string name="no_active_settings">有効な設定: なし</string>
+    <string name="removed_elements_count">個別に削除した要素 (%1$d個):</string>
+    <string name="no_removed_elements">個別に削除した要素: なし</string>
+    <string name="close">閉じる</string>
+
+    <!-- Preset tags -->
+    <string name="preset_tag_ad_block">広告削除</string>
+    <string name="preset_tag_text_only">文字のみ</string>
+    <string name="preset_tag_grayscale">白黒</string>
+    <string name="preset_tag_no_background">背景なし</string>
+    <string name="preset_tag_image_adjust">画像調整</string>
+    <string name="preset_tag_no_settings">設定なし</string>
+
+    <!-- Menu action labels -->
+    <string name="action_label_remove_ads">広告を削除</string>
+    <string name="action_label_remove_article_bottom">記事下部を削除</string>
+    <string name="action_label_collapse_empty">空白を詰める</string>
+    <string name="action_label_presets">プリセット</string>
+    <string name="action_label_adjust_images">画像を調整</string>
+    <string name="action_label_remove_elements">要素を削除</string>
+    <string name="action_label_undo">元に戻す</string>
+    <string name="action_label_marquee">ドラッグ選択</string>
+    <string name="action_label_batch_print">範囲選択で印刷</string>
+    <string name="action_label_save_url">URLを保存</string>
+    <string name="action_label_text_only">文字のみ表示</string>
+    <string name="action_label_grayscale">白黒モード</string>
+    <string name="action_label_remove_background">背景を削除</string>
+
+    <!-- WebViewScreen -->
+    <string name="remove_element_mode_title">🗑 要素削除 - 削除したい部分をタップ</string>
+    <string name="exit">終了</string>
+    <string name="browser_title">WEB_PDF - Browser</string>
+    <string name="download_open_failed">ダウンローダーを開けませんでした</string>
+    <string name="no_links_selected_toast">リンクを選択してください</string>
+    <string name="confirm_selection">選択を確定</string>
+    <string name="enter_preset_name_title">プリセット名を入力</string>
+    <string name="preset_name_label">プリセット名</string>
+    <string name="save">保存</string>
+    <string name="cancel">キャンセル</string>
+    <string name="preset_saved_toast">プリセットを保存しました</string>
+    <string name="presets_title">プリセット</string>
+    <string name="save_current_settings">現在の設定を保存</string>
+    <string name="no_presets_available">プリセットがありません</string>
+    <string name="preset_deleted_toast">「%1$s」を削除しました</string>
+    <string name="preset_applied_toast">プリセット「%1$s」を適用しました</string>
+    <string name="home">ホーム</string>
+    <string name="print">印刷</string>
+    <string name="fab_save_url">URLを保存</string>
+    <string name="ad_block_stop_label">広告削除を停止</string>
+    <string name="ad_block_label">広告削除</string>
+    <string name="ad_block_enabled_toast">広告削除を有効にしました</string>
+    <string name="ad_block_stopped_toast">広告削除を停止しました（再読込します）</string>
+    <string name="remove_article_bottom_label">記事下部を削除</string>
+    <string name="article_bottom_removed_toast">関連記事・フッター等を削除しました</string>
+    <string name="exit_remove_element_mode">要素削除モードを終了</string>
+    <string name="remove_element_label">要素を削除</string>
+    <string name="tap_to_remove_toast">削除したい要素をタップしてください</string>
+    <string name="undo_label">元に戻す</string>
+    <string name="undo_done_toast">一つ前の状態に戻しました</string>
+    <string name="marquee_label">ドラッグ選択</string>
+    <string name="marquee_hint_toast">長押ししてからドラッグで選択</string>
+    <string name="batch_print_label">範囲選択で印刷</string>
+    <string name="batch_print_hint_toast">テキストを範囲選択してからこのボタンを押してください</string>
+    <string name="image_adjust_label">画像調整</string>
+    <string name="image_adjusted_toast">画像を調整しました</string>
+    <string name="text_only_off_label">文字のみ表示を解除</string>
+    <string name="text_only_on_label">文字のみ表示</string>
+    <string name="grayscale_off_label">白黒モードを解除</string>
+    <string name="grayscale_on_label">白黒モード</string>
+    <string name="show_background_label">背景を表示</string>
+    <string name="remove_background_label">背景を削除</string>
+    <string name="configure_site_label">このサイトを設定</string>
+    <string name="load_page_first_toast">ページを読み込んでから設定してください</string>
+    <string name="settings_label">設定</string>
+    <string name="collapse_empty_label">空白を詰める</string>
+
+    <!-- SiteProfileDialog -->
+    <string name="site_settings_title">サイト設定</string>
+    <string name="user_agent_label">ユーザーエージェント</string>
+    <string name="force_menu_fix_label">メニュー表示の修正を強制</string>
+    <string name="force_menu_fix_desc">グローバル設定に関わらずこのサイトでメニュー修正を適用</string>
+    <string name="skip_lazy_load_label">遅延画像読み込みをスキップ</string>
+    <string name="skip_lazy_load_desc">IO パッチが悪影響を及ぼすサイト向け</string>
+    <string name="allow_autoplay_label">メディアの自動再生を許可</string>
+    <string name="allow_autoplay_desc">動画・音声がタップなしで再生されるようになる</string>
+    <string name="disable_ad_block_label">広告ブロックを無効にする</string>
+    <string name="disable_ad_block_desc">このサイトをホワイトリストに追加（広告収入を支援したいサイト等）</string>
+    <string name="custom_css_label">カスタム CSS（省略可）</string>
+    <string name="custom_js_label">カスタム JavaScript（省略可）</string>
+    <string name="delete_site_settings_btn">このサイトの設定を削除して再読み込み</string>
+    <string name="save_and_reload_btn">保存して再読み込み</string>
+
+    <!-- BatchLinkPrint -->
+    <string name="batch_notif_channel_name">PDF自動保存の進捗</string>
+    <string name="batch_notif_channel_desc">バッチPDF保存の処理状況を表示します</string>
+    <string name="batch_notif_progress_title">PDF自動保存中 %1$d / %2$d 件</string>
+    <string name="batch_notif_complete_title">PDF自動保存 完了</string>
+    <string name="save_complete_title">保存完了</string>
+    <string name="pdf_saving_title">PDF自動保存処理中...</string>
+    <string name="items_complete">%1$d / %2$d 件完了</string>
+    <string name="batch_pdf_save_title">バッチPDF保存</string>
+    <string name="items_selected">%1$d / %2$d 件選択</string>
+    <string name="select_all">全選択</string>
+    <string name="deselect_all">全解除</string>
+    <string name="print_settings_label">印刷設定</string>
+    <string name="apply_preset_hint">プリセットを適用...</string>
+    <string name="display_mode_label">表示モード</string>
+    <string name="global_setting">グローバル設定</string>
+    <string name="mobile_mode">モバイル</string>
+    <string name="pc_mode">PC</string>
+    <string name="save_to_custom">保存先: 設定済みカスタムフォルダ</string>
+    <string name="save_to_default">保存先: Downloads/WEB_PDF</string>
+    <string name="bulk_save_btn">一括保存 (%1$d件)</string>
+    <string name="select_at_least_one_toast">リンクを1件以上選択してください</string>
+    <string name="preparing_webview">WebViewを準備中...</string>
+    <string name="processing_item_status">%1$d / %2$d 件目を処理中...\n「%3$s」</string>
+    <string name="custom_folder_name">設定したフォルダ</string>
+    <string name="save_success_msg">✅ %1$d件のPDFを\n%2$sに保存しました！</string>
+    <string name="save_failed_msg">❌ PDF保存に失敗しました（%1$d件）</string>
+    <string name="save_partial_msg">⚠️ %1$d件保存成功\n%2$d件は失敗しました</string>
+    <string name="ok">OK</string>
 </resources>

@@ -1,4 +1,4 @@
-package com.example.printedit.ui
+package jp.webpdf.app.ui
 
 import android.annotation.SuppressLint
 import android.app.NotificationChannel
@@ -29,11 +29,13 @@ import androidx.compose.ui.window.Dialog
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.AdSize
 import com.google.android.gms.ads.AdView
-import com.example.printedit.AdManager
-import com.example.printedit.data.Preset
-import com.example.printedit.data.PresetRepository
-import com.example.printedit.data.SettingsRepository
-import com.example.printedit.data.UserAgentMode
+import androidx.compose.ui.res.stringResource
+import jp.webpdf.app.R
+import jp.webpdf.app.AdManager
+import jp.webpdf.app.data.Preset
+import jp.webpdf.app.data.PresetRepository
+import jp.webpdf.app.data.SettingsRepository
+import jp.webpdf.app.data.UserAgentMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -141,9 +143,9 @@ private fun ensureNotificationChannel(context: Context) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         val ch = NotificationChannel(
             BATCH_NOTIF_CHANNEL_ID,
-            "PDF自動保存の進捗",
+            context.getString(R.string.batch_notif_channel_name),
             NotificationManager.IMPORTANCE_LOW  // バイブなし・サイレント
-        ).apply { description = "バッチPDF保存の処理状況を表示します" }
+        ).apply { description = context.getString(R.string.batch_notif_channel_desc) }
         context.getSystemService(NotificationManager::class.java)
             .createNotificationChannel(ch)
     }
@@ -160,7 +162,7 @@ private fun postProgressNotification(context: Context, current: Int, total: Int,
     ensureNotificationChannel(context)
     val notif = NotificationCompat.Builder(context, BATCH_NOTIF_CHANNEL_ID)
         .setSmallIcon(android.R.drawable.stat_sys_download)
-        .setContentTitle("PDF自動保存中 $current / $total 件")
+        .setContentTitle(context.getString(R.string.batch_notif_progress_title, current, total))
         .setContentText(title.take(60))
         .setProgress(total, current, false)
         .setOngoing(true)
@@ -178,7 +180,7 @@ private fun postCompletionNotification(context: Context, message: String) {
     ensureNotificationChannel(context)
     val notif = NotificationCompat.Builder(context, BATCH_NOTIF_CHANNEL_ID)
         .setSmallIcon(android.R.drawable.stat_sys_download_done)
-        .setContentTitle("PDF自動保存 完了")
+        .setContentTitle(context.getString(R.string.batch_notif_complete_title))
         .setContentText(message)
         .setAutoCancel(true)
         .build()
@@ -273,7 +275,7 @@ fun BatchLinkPrintDialog(
         var failCount = 0
 
         for ((index, link) in selectedLinks.withIndex()) {
-            statusMessage = "${index + 1} / ${selectedLinks.size} 件目を処理中...\n「${link.text.take(40)}」"
+            statusMessage = context.getString(R.string.processing_item_status, index + 1, selectedLinks.size, link.text.take(40))
             postProgressNotification(context, index + 1, selectedLinks.size, link.text)
 
             // Set up load callback then load URL (both on main thread to avoid race)
@@ -358,11 +360,11 @@ fun BatchLinkPrintDialog(
         }
 
         // 完了通知と結果表示
-        val destination = if (customUriString != null) "設定したフォルダ" else "Downloads/PrintEdit"
+        val destination = if (customUriString != null) context.getString(R.string.custom_folder_name) else "Downloads/WEB_PDF"
         val msg = when {
-            failCount == 0 -> "✅ ${successCount}件のPDFを\n${destination}に保存しました！"
-            successCount == 0 -> "❌ PDF保存に失敗しました（${failCount}件）"
-            else -> "⚠️ ${successCount}件保存成功\n${failCount}件は失敗しました"
+            failCount == 0 -> context.getString(R.string.save_success_msg, successCount, destination)
+            successCount == 0 -> context.getString(R.string.save_failed_msg, failCount)
+            else -> context.getString(R.string.save_partial_msg, successCount, failCount)
         }
         cancelProgressNotification(context)
         postCompletionNotification(context, msg.replace("\n", " "))
@@ -384,7 +386,7 @@ fun BatchLinkPrintDialog(
                     if (isDone) {
                         // ---- Completion View ----
                         Text(
-                            "保存完了",
+                            stringResource(R.string.save_complete_title),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -396,12 +398,12 @@ fun BatchLinkPrintDialog(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.End
                         ) {
-                            Button(onClick = onDismiss) { Text("OK") }
+                            Button(onClick = onDismiss) { Text(stringResource(R.string.ok)) }
                         }
                     } else if (isGenerating) {
                         // ---- Progress View ----
                         Text(
-                            "PDF自動保存処理中...",
+                            stringResource(R.string.pdf_saving_title),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -417,7 +419,7 @@ fun BatchLinkPrintDialog(
                             modifier = Modifier.fillMaxWidth()
                         )
                         Text(
-                            "$progress / $total 件完了",
+                            stringResource(R.string.items_complete, progress, total),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -436,7 +438,7 @@ fun BatchLinkPrintDialog(
                     } else {
                         // ---- Setup View ----
                         Text(
-                            "バッチPDF保存",
+                            stringResource(R.string.batch_pdf_save_title),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
@@ -448,12 +450,12 @@ fun BatchLinkPrintDialog(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                "${links.count { it.selected.value }} / ${links.size} 件選択",
+                                stringResource(R.string.items_selected, links.count { it.selected.value }, links.size),
                                 style = MaterialTheme.typography.bodyMedium
                             )
                             Row {
-                                TextButton(onClick = { links.forEach { it.selected.value = true } }) { Text("全選択") }
-                                TextButton(onClick = { links.forEach { it.selected.value = false } }) { Text("全解除") }
+                                TextButton(onClick = { links.forEach { it.selected.value = true } }) { Text(stringResource(R.string.select_all)) }
+                                TextButton(onClick = { links.forEach { it.selected.value = false } }) { Text(stringResource(R.string.deselect_all)) }
                             }
                         }
 
@@ -493,7 +495,7 @@ fun BatchLinkPrintDialog(
                         Divider()
 
                         // Print Settings
-                        Text("印刷設定", style = MaterialTheme.typography.labelLarge)
+                        Text(stringResource(R.string.print_settings_label), style = MaterialTheme.typography.labelLarge)
 
                         // Preset selector
                         if (presets.isNotEmpty()) {
@@ -509,7 +511,7 @@ fun BatchLinkPrintDialog(
                                         )
                                     else ButtonDefaults.outlinedButtonColors()
                                 ) {
-                                    Text(appliedPresetName?.let { "✓ $it" } ?: "プリセットを適用...")
+                                    Text(appliedPresetName?.let { "✓ $it" } ?: stringResource(R.string.apply_preset_hint))
                                 }
                                 DropdownMenu(
                                     expanded = showPresetMenu,
@@ -534,12 +536,12 @@ fun BatchLinkPrintDialog(
                         }
 
                         // UA selection
-                        Text("表示モード", style = MaterialTheme.typography.labelLarge)
+                        Text(stringResource(R.string.display_mode_label), style = MaterialTheme.typography.labelLarge)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             listOf(
-                                UserAgentMode.GLOBAL to "グローバル設定",
-                                UserAgentMode.MOBILE to "モバイル",
-                                UserAgentMode.DESKTOP to "PC"
+                                UserAgentMode.GLOBAL to stringResource(R.string.global_setting),
+                                UserAgentMode.MOBILE to stringResource(R.string.mobile_mode),
+                                UserAgentMode.DESKTOP to stringResource(R.string.pc_mode)
                             ).forEach { (mode, label) ->
                                 FilterChip(
                                     selected = batchUaMode == mode,
@@ -554,17 +556,17 @@ fun BatchLinkPrintDialog(
                             FilterChip(
                                 selected = isTextOnly,
                                 onClick = { isTextOnly = !isTextOnly },
-                                label = { Text("文字のみ") }
+                                label = { Text(stringResource(R.string.preset_tag_text_only)) }
                             )
                             FilterChip(
                                 selected = isGrayscale,
                                 onClick = { isGrayscale = !isGrayscale },
-                                label = { Text("白黒") }
+                                label = { Text(stringResource(R.string.preset_tag_grayscale)) }
                             )
                             FilterChip(
                                 selected = isRemoveBackground,
                                 onClick = { isRemoveBackground = !isRemoveBackground },
-                                label = { Text("背景なし") }
+                                label = { Text(stringResource(R.string.preset_tag_no_background)) }
                             )
                         }
                         // Settings chips — row 2
@@ -572,19 +574,19 @@ fun BatchLinkPrintDialog(
                             FilterChip(
                                 selected = isAdsRemoved,
                                 onClick = { isAdsRemoved = !isAdsRemoved },
-                                label = { Text("広告削除") }
+                                label = { Text(stringResource(R.string.preset_tag_ad_block)) }
                             )
                             FilterChip(
                                 selected = isImageAdjusted,
                                 onClick = { isImageAdjusted = !isImageAdjusted },
-                                label = { Text("画像調整") }
+                                label = { Text(stringResource(R.string.preset_tag_image_adjust)) }
                             )
                         }
 
                         // Save destination info
                         val customUri = settingsRepository.customSaveUri
                         Text(
-                            text = if (customUri != null) "保存先: 設定済みカスタムフォルダ" else "保存先: Downloads/PrintEdit",
+                            text = if (customUri != null) stringResource(R.string.save_to_custom) else stringResource(R.string.save_to_default),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -595,18 +597,18 @@ fun BatchLinkPrintDialog(
                             horizontalArrangement = Arrangement.End,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            TextButton(onClick = onDismiss) { Text("キャンセル") }
+                            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
                             Spacer(modifier = Modifier.width(8.dp))
                             Button(
                                 onClick = {
                                     val count = links.count { it.selected.value }
                                     if (count == 0) {
-                                        Toast.makeText(context, "リンクを1件以上選択してください", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, context.getString(R.string.select_at_least_one_toast), Toast.LENGTH_SHORT).show()
                                         return@Button
                                     }
                                     total = count
                                     progress = 0
-                                    statusMessage = "WebViewを準備中..."
+                                    statusMessage = context.getString(R.string.preparing_webview)
                                     batchUaSnapshot.value = when (batchUaMode) {
                                         UserAgentMode.MOBILE  -> BATCH_MOBILE_UA
                                         UserAgentMode.DESKTOP -> BATCH_DESKTOP_UA
@@ -616,7 +618,7 @@ fun BatchLinkPrintDialog(
                                     isGenerating = true
                                 }
                             ) {
-                                Text("一括保存 (${links.count { it.selected.value }}件)")
+                                Text(stringResource(R.string.bulk_save_btn, links.count { it.selected.value }))
                             }
                         }
                     }
@@ -716,7 +718,7 @@ suspend fun savePdfToDownloadsImpl(context: Context, webView: WebView, title: St
             val contentValues = android.content.ContentValues().apply {
                 put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, title)
                 put(android.provider.MediaStore.MediaColumns.MIME_TYPE, "application/pdf")
-                put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, android.os.Environment.DIRECTORY_DOWNLOADS + "/PrintEdit")
+                put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, android.os.Environment.DIRECTORY_DOWNLOADS + "/WEB_PDF")
                 put(android.provider.MediaStore.MediaColumns.IS_PENDING, 1)
             }
             val uri = context.contentResolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues) ?: return@withContext false
@@ -729,7 +731,7 @@ suspend fun savePdfToDownloadsImpl(context: Context, webView: WebView, title: St
             return@withContext success
         } else {
             // Fallback for Android 9 and below
-            val dir = java.io.File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS), "PrintEdit")
+            val dir = java.io.File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS), "WEB_PDF")
             if (!dir.exists()) dir.mkdirs()
             val safeTitle = title.replace(Regex("[\\\\/:*?\"<>|]"), "_")
             var file = java.io.File(dir, safeTitle)

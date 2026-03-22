@@ -1,4 +1,4 @@
-package com.example.printedit.ui.theme
+package jp.webpdf.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

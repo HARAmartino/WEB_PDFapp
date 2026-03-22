@@ -5,9 +5,13 @@
 # For more details, see
 #   http://developer.android.com/guide/developing/tools/proguard.html
 
+# GMS Ads SDK が API 35 クラスを参照するが minSdk では存在しないため警告を抑制する
+-dontwarn android.media.LoudnessCodecController
+-dontwarn android.media.LoudnessCodecController$OnLoudnessCodecUpdateListener
+
 # JavascriptInterface メソッドを ProGuard から保護する
 # @JavascriptInterface アノテーションだけでは不十分なため、明示的に keep する
--keepclassmembers class com.example.printedit.ui.ImageLoadInterface {
+-keepclassmembers class jp.webpdf.app.ui.ImageLoadInterface {
    @android.webkit.JavascriptInterface public *;
 }
 
@@ -17,10 +21,11 @@
 -keep class android.webkit.WebChromeClient { *; }
 -keep class android.webkit.JavascriptInterface { *; }
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# スタックトレースでファイル名・行番号を保持する（クラッシュ解析用）
+-keepattributes SourceFile,LineNumberTable
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# 難読化後もソースファイル名を SourceFile として統一表示
+-renamesourcefileattribute SourceFile
+
+# 例外情報を保持する
+-keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod

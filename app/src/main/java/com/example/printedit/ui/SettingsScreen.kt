@@ -1,4 +1,4 @@
-package com.example.printedit.ui
+package jp.webpdf.app.ui
 
 import android.app.Activity
 import android.content.Context
@@ -24,8 +24,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.filled.Delete
-import com.example.printedit.data.SettingsRepository
-import com.example.printedit.data.PresetRepository
+import androidx.compose.ui.res.stringResource
+import jp.webpdf.app.R
+import jp.webpdf.app.data.SettingsRepository
+import jp.webpdf.app.data.PresetRepository
 
 /**
  * SHOW_ADVANCED フラグ付きのフォルダ選択コントラクト。
@@ -85,7 +87,7 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("設定") },
+                title = { Text(stringResource(R.string.settings)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
@@ -104,48 +106,48 @@ fun SettingsScreen(
             // Section 1: Functions
             item {
                 Text(
-                    text = "全般設定",
+                    text = stringResource(R.string.general_settings),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                
+
                 SettingsSwitch(
-                    title = "強力な広告ブロック",
-                    description = "画面を覆う広告や、後から読み込まれる広告を自動で削除します。",
+                    title = stringResource(R.string.aggressive_ad_block),
+                    description = stringResource(R.string.aggressive_ad_block_desc),
                     checked = aggressiveAdBlock,
-                    onCheckedChange = { 
+                    onCheckedChange = {
                         aggressiveAdBlock = it
                         settingsRepository.aggressiveAdBlock = it
                     }
                 )
-                
+
                 SettingsSwitch(
-                    title = "メニュー表示の修正",
-                    description = "メニューが開かないサイトを修正します。（サイトのデザインが変わる場合があります）",
+                    title = stringResource(R.string.menu_fix),
+                    description = stringResource(R.string.menu_fix_desc),
                     checked = menuFixEnabled,
-                    onCheckedChange = { 
+                    onCheckedChange = {
                         menuFixEnabled = it
                         settingsRepository.menuFixEnabled = it
                     }
                 )
-                
+
                 SettingsSwitch(
-                    title = "画像の自動調整",
-                    description = "ページ読み込み時に、大きな画像を自動で画面サイズに合わせます。",
+                    title = stringResource(R.string.auto_image_adjust),
+                    description = stringResource(R.string.auto_image_adjust_desc),
                     checked = autoImageAdjust,
-                    onCheckedChange = { 
+                    onCheckedChange = {
                         autoImageAdjust = it
                         settingsRepository.autoImageAdjust = it
                     }
                 )
-                
+
                 SettingsSwitch(
-                    title = "PC版サイトを表示",
-                    description = "スマートフォン向けではなく、パソコン向けのレイアウトで表示します。（再読み込み後に反映）",
+                    title = stringResource(R.string.desktop_mode),
+                    description = stringResource(R.string.desktop_mode_desc),
                     checked = desktopMode,
-                    onCheckedChange = { 
+                    onCheckedChange = {
                         desktopMode = it
                         settingsRepository.desktopMode = it
                     }
@@ -158,27 +160,32 @@ fun SettingsScreen(
                 Divider()
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "編集メニューのカスタマイズ",
+                    text = stringResource(R.string.menu_customization),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    text = "メニューボタンを押したときに表示する機能を選択してください。",
+                    text = stringResource(R.string.menu_customization_desc),
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
-                
+
                 val allActions = listOf(
-                    "action_remove_ads" to "広告を削除",
-                    "action_presets" to "プリセット",
-                    "action_adjust_images" to "画像を調整",
-                    "action_remove_elements" to "要素を削除",
-                    "action_undo" to "元に戻す",
-                    "action_text_only" to "文字のみ表示",
-                    "action_grayscale" to "白黒モード",
-                    "action_remove_background" to "背景を削除"
+                    "action_remove_ads" to stringResource(R.string.action_label_remove_ads),
+                    "action_remove_article_bottom" to stringResource(R.string.action_label_remove_article_bottom),
+                    "action_collapse_empty" to stringResource(R.string.action_label_collapse_empty),
+                    "action_presets" to stringResource(R.string.action_label_presets),
+                    "action_adjust_images" to stringResource(R.string.action_label_adjust_images),
+                    "action_remove_elements" to stringResource(R.string.action_label_remove_elements),
+                    "action_undo" to stringResource(R.string.action_label_undo),
+                    "action_marquee" to stringResource(R.string.action_label_marquee),
+                    "action_batch_print" to stringResource(R.string.action_label_batch_print),
+                    "action_save_url" to stringResource(R.string.action_label_save_url),
+                    "action_text_only" to stringResource(R.string.action_label_text_only),
+                    "action_grayscale" to stringResource(R.string.action_label_grayscale),
+                    "action_remove_background" to stringResource(R.string.action_label_remove_background)
                 )
                 
                 allActions.forEach { (id, label) ->
@@ -201,20 +208,20 @@ fun SettingsScreen(
                 Divider()
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "一括PDF保存先",
+                    text = stringResource(R.string.batch_pdf_destination),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    text = "バッチ印刷で保存するフォルダを設定します。デフォルトはダウンロード内の PrintEdit フォルダです。",
+                    text = stringResource(R.string.batch_pdf_destination_desc),
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
                 if (customSaveUri != null) {
                     Text(
-                        text = "現在: カスタムフォルダ (設定済み)",
+                        text = stringResource(R.string.current_custom_folder),
                         fontSize = 14.sp,
                         color = MaterialTheme.colorScheme.secondary,
                         modifier = Modifier.padding(bottom = 8.dp)
@@ -226,11 +233,11 @@ fun SettingsScreen(
                         },
                         modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)
                     ) {
-                        Text("デフォルト (Downloads/PrintEdit) に戻す")
+                        Text(stringResource(R.string.reset_to_default_folder))
                     }
                 } else {
                     Text(
-                        text = "現在: Downloads/PrintEdit (デフォルト)",
+                        text = stringResource(R.string.current_default_folder),
                         fontSize = 14.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 8.dp)
@@ -240,10 +247,10 @@ fun SettingsScreen(
                     onClick = { folderPickerLauncher.launch(Unit) },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("保存先フォルダを変更する")
+                    Text(stringResource(R.string.change_save_folder))
                 }
                 Text(
-                    text = "※ 一度選択すれば、以後はダイアログなしで自動保存されます。",
+                    text = stringResource(R.string.auto_save_note),
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp)
@@ -256,23 +263,23 @@ fun SettingsScreen(
                 Divider()
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "プリセット管理",
+                    text = stringResource(R.string.preset_management),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    text = "保存したプリセットの内容確認と削除を行います。",
+                    text = stringResource(R.string.preset_management_desc),
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
-                
+
                 OutlinedButton(
                     onClick = { showPresetManager = true },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("保存済みプリセットの詳細を確認・削除")
+                    Text(stringResource(R.string.view_delete_presets))
                 }
             }
         }
@@ -296,10 +303,10 @@ fun PresetManagerDialog(
     
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("保存済みプリセット") },
+        title = { Text(stringResource(R.string.saved_presets_title)) },
         text = {
             if (presets.isEmpty()) {
-                Text("保存されたプリセットはありません", modifier = Modifier.padding(16.dp))
+                Text(stringResource(R.string.no_presets_saved), modifier = Modifier.padding(16.dp))
             } else {
                 LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
                     items(presets) { preset ->
@@ -322,27 +329,27 @@ fun PresetManagerDialog(
                                             presets = presetRepository.getPresets()
                                         }
                                     ) {
-                                        Icon(Icons.Filled.Delete, contentDescription = "削除", tint = MaterialTheme.colorScheme.error)
+                                        Icon(Icons.Filled.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
                                     }
                                 }
                                 @Suppress("DEPRECATION")
                                 Divider(modifier = Modifier.padding(vertical = 4.dp))
                                 
                                 val tags = mutableListOf<String>()
-                                if (preset.adsRemoved) tags.add("広告削除")
-                                if (preset.textOnly) tags.add("文字のみ")
-                                if (preset.grayscale) tags.add("白黒")
-                                if (preset.removeBackground) tags.add("背景なし")
-                                if (preset.imageAdjusted) tags.add("画像調整")
+                                if (preset.adsRemoved) tags.add(stringResource(R.string.preset_tag_ad_block))
+                                if (preset.textOnly) tags.add(stringResource(R.string.preset_tag_text_only))
+                                if (preset.grayscale) tags.add(stringResource(R.string.preset_tag_grayscale))
+                                if (preset.removeBackground) tags.add(stringResource(R.string.preset_tag_no_background))
+                                if (preset.imageAdjusted) tags.add(stringResource(R.string.preset_tag_image_adjust))
                                 if (tags.isNotEmpty()) {
-                                    Text("有効な設定: ${tags.joinToString(", ")}", fontSize = 14.sp)
+                                    Text(stringResource(R.string.active_settings, tags.joinToString(", ")), fontSize = 14.sp)
                                 } else {
-                                    Text("有効な設定: なし", fontSize = 14.sp)
+                                    Text(stringResource(R.string.no_active_settings), fontSize = 14.sp)
                                 }
-                                
+
                                 Spacer(modifier = Modifier.height(8.dp))
                                 if (preset.selectors.isNotEmpty()) {
-                                    Text("個別に削除した要素 (${preset.selectors.size}個):", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                                    Text(stringResource(R.string.removed_elements_count, preset.selectors.size), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Box(
                                         modifier = Modifier
@@ -359,7 +366,7 @@ fun PresetManagerDialog(
                                         }
                                     }
                                 } else {
-                                    Text("個別に削除した要素: なし", fontSize = 14.sp)
+                                    Text(stringResource(R.string.no_removed_elements), fontSize = 14.sp)
                                 }
                             }
                         }
@@ -368,7 +375,7 @@ fun PresetManagerDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("閉じる") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
         }
     )
 }

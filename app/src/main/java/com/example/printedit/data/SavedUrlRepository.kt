@@ -1,4 +1,4 @@
-package com.example.printedit.data
+package jp.webpdf.app.data
 
 import android.content.Context
 import android.content.SharedPreferences

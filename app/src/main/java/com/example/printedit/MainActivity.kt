@@ -1,4 +1,4 @@
-package com.example.printedit
+package jp.webpdf.app
 
 import android.os.Bundle
 import android.webkit.WebView
@@ -11,11 +11,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.compose.runtime.*
-import com.example.printedit.ui.WebViewScreen
-import com.example.printedit.ui.HomeScreen
-import com.example.printedit.ui.SettingsScreen
-import com.example.printedit.ui.theme.PrintEditTheme
-import com.example.printedit.data.SavedUrlRepository
+import jp.webpdf.app.ui.WebViewScreen
+import jp.webpdf.app.ui.HomeScreen
+import jp.webpdf.app.ui.SettingsScreen
+import jp.webpdf.app.ui.theme.PrintEditTheme
+import jp.webpdf.app.data.SavedUrlRepository
 
 /** 型安全な画面遷移用 sealed class */
 sealed class Screen {

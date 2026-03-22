@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(./gradlew clean:*)"
+      "Bash(./gradlew clean:*)",
+      "Bash(ls \"g:\\\\マイドライブ\\\\アプリ開発\\\\開発中\\\\アンドロイドアプリ\\\\WEB_PDFapp\\\\app\\\\build\\\\outputs\"\" 2>/dev/null || echo \"outputsフォルダなし \")",
+      "Bash(grep -n [^].*[ぁ-ん].* g:/マイドライブ/アプリ開発/開発中/アンドロイドアプリ/WEB_PDFapp/app/src/main/java/com/example/printedit/ui/HomeScreen.kt)",
+      "Bash(grep -n [^].*[ぁ-ん].* g:/マイドライブ/アプリ開発/開発中/アンドロイドアプリ/WEB_PDFapp/app/src/main/java/com/example/printedit/ui/SettingsScreen.kt)",
+      "Bash(grep -n [^].*[ぁ-ん].* g:/マイドライブ/アプリ開発/開発中/アンドロイドアプリ/WEB_PDFapp/app/src/main/java/com/example/printedit/ui/WebViewScreen.kt)"
     ]
   }
 }

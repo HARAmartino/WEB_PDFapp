@@ -1,4 +1,4 @@
-package com.example.printedit.ui
+package jp.webpdf.app.ui
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -35,13 +35,15 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import com.example.printedit.AdManager
-import com.example.printedit.data.SettingsRepository
-import com.example.printedit.data.PresetRepository
-import com.example.printedit.data.SavedUrlRepository
-import com.example.printedit.data.SiteProfile
-import com.example.printedit.data.SiteProfileRepository
-import com.example.printedit.data.UserAgentMode
+import androidx.compose.ui.res.stringResource
+import jp.webpdf.app.R
+import jp.webpdf.app.AdManager
+import jp.webpdf.app.data.SettingsRepository
+import jp.webpdf.app.data.PresetRepository
+import jp.webpdf.app.data.SavedUrlRepository
+import jp.webpdf.app.data.SiteProfile
+import jp.webpdf.app.data.SiteProfileRepository
+import jp.webpdf.app.data.UserAgentMode
 
 @SuppressLint("SetJavaScriptEnabled")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -115,10 +117,10 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                             TopAppBar(
                                 title = { 
                                     Text(
-                                        "🗑 要素削除 - 削除したい部分をタップ",
+                                        stringResource(R.string.remove_element_mode_title),
                                         style = MaterialTheme.typography.titleMedium,
                                         color = androidx.compose.ui.graphics.Color.White
-                                    ) 
+                                    )
                                 },
                                 colors = TopAppBarDefaults.topAppBarColors(
                                     containerColor = androidx.compose.ui.graphics.Color(0xFFF44336)
@@ -128,13 +130,13 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                                         isRemoveElementMode = false
                                         webViewRef?.evaluateJavascript("if(window.toggleRemoveElementMode) window.toggleRemoveElementMode(false);", null)
                                     }) {
-                                        Text("終了", color = androidx.compose.ui.graphics.Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                        Text(stringResource(R.string.exit), color = androidx.compose.ui.graphics.Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                                     }
                                 }
                             )
                         } else {
                             CenterAlignedTopAppBar(
-                                title = { Text("PrintEdit - Browser") },
+                                title = { Text(stringResource(R.string.browser_title)) },
                                 navigationIcon = {
                                     IconButton(onClick = onExit) {
                                         Icon(Icons.Filled.Home, contentDescription = "Home")
@@ -444,7 +446,7 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl))
                                     context.startActivity(intent)
                                 } catch (e: Exception) {
-                                    Toast.makeText(context, "ダウンローダーを開けませんでした", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, context.getString(R.string.download_open_failed), Toast.LENGTH_SHORT).show()
                                 }
                             }
 
@@ -517,12 +519,12 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                                     webViewRef?.evaluateJavascript("if(window.toggleMarqueeMode) window.toggleMarqueeMode(false);", null)
                                     showBatchDialog = true
                                 } else {
-                                    Toast.makeText(context, "リンクを選択してください", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, context.getString(R.string.no_links_selected_toast), Toast.LENGTH_SHORT).show()
                                 }
                             }
                         },
                         icon = { Icon(Icons.Filled.Check, "Confirm") },
-                        text = { Text("選択を確定") },
+                        text = { Text(stringResource(R.string.confirm_selection)) },
                         containerColor = MaterialTheme.colorScheme.primary
                     )
                 }
@@ -546,12 +548,12 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                 if (showSaveDialog) {
                     AlertDialog(
                         onDismissRequest = { showSaveDialog = false },
-                        title = { Text("プリセット名を入力") },
+                        title = { Text(stringResource(R.string.enter_preset_name_title)) },
                         text = {
                             OutlinedTextField(
                                 value = presetName,
                                 onValueChange = { presetName = it },
-                                label = { Text("プリセット名") },
+                                label = { Text(stringResource(R.string.preset_name_label)) },
                                 singleLine = true,
                                 modifier = Modifier.fillMaxWidth()
                             )
@@ -588,18 +590,18 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                                             presets = presetRepository.getPresets()
                                             presetName = ""
                                             showSaveDialog = false
-                                            Toast.makeText(context, "プリセットを保存しました", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, context.getString(R.string.preset_saved_toast), Toast.LENGTH_SHORT).show()
                                         }
                                     }
                                 },
                                 enabled = presetName.isNotBlank()
                             ) {
-                                Text("保存")
+                                Text(stringResource(R.string.save))
                             }
                         },
                         dismissButton = {
                             TextButton(onClick = { showSaveDialog = false }) {
-                                Text("キャンセル")
+                                Text(stringResource(R.string.cancel))
                             }
                         }
                     )
@@ -607,7 +609,7 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
 
                 AlertDialog(
                     onDismissRequest = { showPresetSelector = false },
-                    title = { Text("プリセット") },
+                    title = { Text(stringResource(R.string.presets_title)) },
                     text = {
                         Column {
                             // Save current settings button
@@ -620,12 +622,12 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                                     contentDescription = null,
                                     modifier = Modifier.padding(end = 8.dp)
                                 )
-                                Text("現在の設定を保存")
+                                Text(stringResource(R.string.save_current_settings))
                             }
 
                             if (presets.isEmpty()) {
                                 Text(
-                                    "プリセットがありません",
+                                    stringResource(R.string.no_presets_available),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(vertical = 16.dp)
@@ -637,12 +639,12 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                                             headlineContent = { Text(preset.name) },
                                             supportingContent = {
                                                 val tags = mutableListOf<String>()
-                                                if (preset.adsRemoved) tags.add("広告削除")
-                                                if (preset.textOnly) tags.add("文字のみ")
-                                                if (preset.grayscale) tags.add("白黒")
-                                                if (preset.removeBackground) tags.add("背景なし")
-                                                if (preset.imageAdjusted) tags.add("画像調整")
-                                                if (tags.isEmpty()) tags.add("設定なし")
+                                                if (preset.adsRemoved) tags.add(stringResource(R.string.preset_tag_ad_block))
+                                                if (preset.textOnly) tags.add(stringResource(R.string.preset_tag_text_only))
+                                                if (preset.grayscale) tags.add(stringResource(R.string.preset_tag_grayscale))
+                                                if (preset.removeBackground) tags.add(stringResource(R.string.preset_tag_no_background))
+                                                if (preset.imageAdjusted) tags.add(stringResource(R.string.preset_tag_image_adjust))
+                                                if (tags.isEmpty()) tags.add(stringResource(R.string.preset_tag_no_settings))
                                                 Text(tags.joinToString(" / "), style = MaterialTheme.typography.bodySmall)
                                             },
                                             leadingContent = { Icon(Icons.Filled.Settings, null) },
@@ -650,11 +652,11 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                                                 IconButton(onClick = {
                                                     presetRepository.deletePreset(preset.name)
                                                     presets = presetRepository.getPresets()
-                                                    Toast.makeText(context, "「${preset.name}」を削除しました", Toast.LENGTH_SHORT).show()
+                                                    Toast.makeText(context, context.getString(R.string.preset_deleted_toast, preset.name), Toast.LENGTH_SHORT).show()
                                                 }) {
                                                     Icon(
                                                         Icons.Filled.Delete,
-                                                        contentDescription = "削除",
+                                                        contentDescription = null,
                                                         tint = MaterialTheme.colorScheme.error
                                                     )
                                                 }
@@ -685,7 +687,7 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                                                 }
 
                                                 showPresetSelector = false
-                                                Toast.makeText(context, "プリセット「${preset.name}」を適用しました", Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(context, context.getString(R.string.preset_applied_toast, preset.name), Toast.LENGTH_SHORT).show()
                                             }
                                         )
                                     }
@@ -695,7 +697,7 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                     },
                     confirmButton = {
                         TextButton(onClick = { showPresetSelector = false }) {
-                            Text("閉じる")
+                            Text(stringResource(R.string.close))
                         }
                     }
                 )
@@ -724,24 +726,30 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                 ) {
                     
                     // ホーム
-                    MiniFabItem(icon = Icons.Filled.Home, label = "ホーム") {
+                    MiniFabItem(icon = Icons.Filled.Home, label = stringResource(R.string.home)) {
                         isFabExpanded = false
                         onExit()
                     }
-                    
+
                     // 印刷
-                    MiniFabItem(icon = Icons.Filled.Print, label = "印刷") {
+                    MiniFabItem(icon = Icons.Filled.Print, label = stringResource(R.string.print)) {
                         isFabExpanded = false
                         val activity = context as? android.app.Activity
                         val doPrint = {
                             val printManager = context.getSystemService(Context.PRINT_SERVICE) as? android.print.PrintManager
-                            val adapter = webViewRef?.createPrintDocumentAdapter("PrintEdit_Page")
+                            val pageTitle = webViewRef?.title
+                                ?.replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                                ?.trim()
+                                ?.take(80)
+                                ?.ifBlank { null }
+                                ?: "WEB_PDF"
+                            val adapter = webViewRef?.createPrintDocumentAdapter(pageTitle)
                             if (printManager != null && adapter != null) {
                                 val printAttributes = android.print.PrintAttributes.Builder()
                                     .setMediaSize(android.print.PrintAttributes.MediaSize.ISO_A4)
                                     .setMinMargins(android.print.PrintAttributes.Margins.NO_MARGINS)
                                     .build()
-                                printManager.print("PrintEdit_Page", adapter, printAttributes)
+                                printManager.print(pageTitle, adapter, printAttributes)
                             }
                         }
                         // 広告が準備できていれば全画面広告を表示してから印刷ダイアログを開く
@@ -753,7 +761,7 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                     }
                     
                     // URLを保存
-                    MiniFabItem(icon = Icons.Filled.Bookmark, label = "URLを保存") {
+                    if (menuActions.contains("action_save_url")) MiniFabItem(icon = Icons.Filled.Bookmark, label = stringResource(R.string.fab_save_url)) {
                         isFabExpanded = false
                         webViewRef?.evaluateJavascript("document.title") { rawTitle ->
                             var title = rawTitle ?: ""
@@ -762,13 +770,13 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                             }
                             val currentPageUrl = webViewRef?.url ?: url
                             savedUrlRepository.save(currentPageUrl, title)
-                            Toast.makeText(context, "URLを保存しました", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.url_saved), Toast.LENGTH_SHORT).show()
                         }
                     }
 
                     // 広告削除 (Toggle)
                     if (menuActions.contains("action_remove_ads")) {
-                        val adLabel = if (isAdsRemoved) "広告削除を停止" else "広告削除"
+                        val adLabel = if (isAdsRemoved) stringResource(R.string.ad_block_stop_label) else stringResource(R.string.ad_block_label)
                         val adIcon = if (isAdsRemoved) Icons.Filled.Block else Icons.Filled.Delete
                         MiniFabItem(icon = adIcon, label = adLabel) {
                             isFabExpanded = false
@@ -777,75 +785,81 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                             isAdsRemovedRef.set(newVal)
                             if (newVal) {
                                 webViewRef?.evaluateJavascript("if(window.peToggleRemoveAds) window.peToggleRemoveAds(true);", null)
-                                Toast.makeText(context, "広告削除を有効にしました", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.ad_block_enabled_toast), Toast.LENGTH_SHORT).show()
                             } else {
                                 webViewRef?.evaluateJavascript("if(window.peToggleRemoveAds) window.peToggleRemoveAds(false);", null)
-                                Toast.makeText(context, "広告削除を停止しました（再読込します）", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.ad_block_stopped_toast), Toast.LENGTH_SHORT).show()
                                 webViewRef?.reload()
                             }
                         }
                     }
                     
                     // 記事下部を削除
-                    MiniFabItem(icon = Icons.Filled.CleaningServices, label = "記事下部を削除") {
-                        isFabExpanded = false
-                        webViewRef?.evaluateJavascript(removeRelatedArticlesJs, null)
-                        Toast.makeText(context, "関連記事・フッター等を削除しました", Toast.LENGTH_SHORT).show()
+                    if (menuActions.contains("action_remove_article_bottom")) {
+                        MiniFabItem(icon = Icons.Filled.CleaningServices, label = stringResource(R.string.remove_article_bottom_label)) {
+                            isFabExpanded = false
+                            webViewRef?.evaluateJavascript(removeRelatedArticlesJs, null)
+                            Toast.makeText(context, context.getString(R.string.article_bottom_removed_toast), Toast.LENGTH_SHORT).show()
+                        }
                     }
 
                     // 要素を削除
                     if (menuActions.contains("action_remove_elements")) {
                         MiniFabItem(
                             icon = Icons.Filled.Clear,
-                            label = if (isRemoveElementMode) "要素削除モードを終了" else "要素を削除"
+                            label = if (isRemoveElementMode) stringResource(R.string.exit_remove_element_mode) else stringResource(R.string.remove_element_label)
                         ) {
                             isFabExpanded = false
                             val newMode = !isRemoveElementMode
                             isRemoveElementMode = newMode
                             webViewRef?.evaluateJavascript("if(window.toggleRemoveElementMode) window.toggleRemoveElementMode($newMode);", null)
                             if (newMode) {
-                                Toast.makeText(context, "削除したい要素をタップしてください", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.tap_to_remove_toast), Toast.LENGTH_SHORT).show()
                             }
                         }
                     }
 
                     // 元に戻す (Undo)
                     if (menuActions.contains("action_undo")) {
-                        MiniFabItem(icon = Icons.Filled.Undo, label = "元に戻す") {
+                        MiniFabItem(icon = Icons.Filled.Undo, label = stringResource(R.string.undo_label)) {
                             isFabExpanded = false
                             webViewRef?.evaluateJavascript("if(window.peUndoLastAction) window.peUndoLastAction();", null)
-                            Toast.makeText(context, "一つ前の状態に戻しました", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.undo_done_toast), Toast.LENGTH_SHORT).show()
                         }
                     }
 
                     // ドラッグ選択
-                    MiniFabItem(icon = Icons.Filled.SelectAll, label = "ドラッグ選択") {
-                        isFabExpanded = false
-                        isMarqueeMode = true
-                        webViewRef?.evaluateJavascript("if(window.toggleMarqueeMode) window.toggleMarqueeMode(true);", null)
-                        Toast.makeText(context, "長押ししてからドラッグで選択", Toast.LENGTH_SHORT).show()
+                    if (menuActions.contains("action_marquee")) {
+                        MiniFabItem(icon = Icons.Filled.SelectAll, label = stringResource(R.string.marquee_label)) {
+                            isFabExpanded = false
+                            isMarqueeMode = true
+                            webViewRef?.evaluateJavascript("if(window.toggleMarqueeMode) window.toggleMarqueeMode(true);", null)
+                            Toast.makeText(context, context.getString(R.string.marquee_hint_toast), Toast.LENGTH_SHORT).show()
+                        }
                     }
 
                     // 範囲選択で印刷
-                    MiniFabItem(icon = Icons.Filled.ContentCut, label = "範囲選択で印刷") {
-                        isFabExpanded = false
-                        webViewRef?.evaluateJavascript(getLinksInSelectionJs) { json ->
-                            if (json != null && json != "null" && json != "[]" && json != "\"[]\"") {
-                                var cleanJson = json
-                                if (cleanJson.startsWith("\"") && cleanJson.endsWith("\"")) {
-                                    cleanJson = cleanJson.substring(1, cleanJson.length - 1).replace("\\\"", "\"").replace("\\\\", "\\")
+                    if (menuActions.contains("action_batch_print")) {
+                        MiniFabItem(icon = Icons.Filled.ContentCut, label = stringResource(R.string.batch_print_label)) {
+                            isFabExpanded = false
+                            webViewRef?.evaluateJavascript(getLinksInSelectionJs) { json ->
+                                if (json != null && json != "null" && json != "[]" && json != "\"[]\"") {
+                                    var cleanJson = json
+                                    if (cleanJson.startsWith("\"") && cleanJson.endsWith("\"")) {
+                                        cleanJson = cleanJson.substring(1, cleanJson.length - 1).replace("\\\"", "\"").replace("\\\\", "\\")
+                                    }
+                                    selectedLinksJson = cleanJson
+                                    showBatchDialog = true
+                                } else {
+                                    Toast.makeText(context, context.getString(R.string.batch_print_hint_toast), Toast.LENGTH_SHORT).show()
                                 }
-                                selectedLinksJson = cleanJson
-                                showBatchDialog = true
-                            } else {
-                                Toast.makeText(context, "テキストを範囲選択してからこのボタンを押してください", Toast.LENGTH_SHORT).show()
                             }
                         }
                     }
 
                     // プリセット
                     if (menuActions.contains("action_presets")) {
-                        MiniFabItem(icon = Icons.Filled.List, label = "プリセット") {
+                        MiniFabItem(icon = Icons.Filled.List, label = stringResource(R.string.action_label_presets)) {
                             isFabExpanded = false
                             showPresetSelector = true
                         }
@@ -853,11 +867,11 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
 
                     // 画像調整
                     if (menuActions.contains("action_adjust_images")) {
-                        MiniFabItem(icon = Icons.Filled.Image, label = "画像調整") {
+                        MiniFabItem(icon = Icons.Filled.Image, label = stringResource(R.string.image_adjust_label)) {
                             isFabExpanded = false
                             isImageAdjusted = true
                             webViewRef?.evaluateJavascript(smartFitImagesJs, null)
-                            Toast.makeText(context, "画像を調整しました", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.image_adjusted_toast), Toast.LENGTH_SHORT).show()
                         }
                     }
 
@@ -865,7 +879,7 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                     if (menuActions.contains("action_text_only")) {
                         MiniFabItem(
                             icon = Icons.Filled.Description,
-                            label = if (isTextOnly) "文字のみ表示を解除" else "文字のみ表示"
+                            label = if (isTextOnly) stringResource(R.string.text_only_off_label) else stringResource(R.string.text_only_on_label)
                         ) {
                             isFabExpanded = false
                             val newVal = !isTextOnly
@@ -878,7 +892,7 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                     if (menuActions.contains("action_grayscale")) {
                         MiniFabItem(
                             icon = Icons.Filled.Contrast,
-                            label = if (isGrayscale) "白黒モードを解除" else "白黒モード"
+                            label = if (isGrayscale) stringResource(R.string.grayscale_off_label) else stringResource(R.string.grayscale_on_label)
                         ) {
                             isFabExpanded = false
                             val newVal = !isGrayscale
@@ -891,7 +905,7 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                     if (menuActions.contains("action_remove_background")) {
                         MiniFabItem(
                             icon = Icons.Filled.Wallpaper,
-                            label = if (isNoBackground) "背景を表示" else "背景を削除"
+                            label = if (isNoBackground) stringResource(R.string.show_background_label) else stringResource(R.string.remove_background_label)
                         ) {
                             isFabExpanded = false
                             val newVal = !isNoBackground
@@ -901,7 +915,7 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                     }
 
                     // このサイトを設定
-                    MiniFabItem(icon = Icons.Filled.Tune, label = "このサイトを設定") {
+                    MiniFabItem(icon = Icons.Filled.Tune, label = stringResource(R.string.configure_site_label)) {
                         isFabExpanded = false
                         val host = webViewRef?.url?.let {
                             android.net.Uri.parse(it).host?.removePrefix("www.")?.lowercase()
@@ -910,12 +924,12 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                             currentSiteHost = host
                             showSiteProfileDialog = true
                         } else {
-                            Toast.makeText(context, "ページを読み込んでから設定してください", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.load_page_first_toast), Toast.LENGTH_SHORT).show()
                         }
                     }
 
                     // 設定
-                    MiniFabItem(icon = Icons.Filled.Settings, label = "設定") {
+                    MiniFabItem(icon = Icons.Filled.Settings, label = stringResource(R.string.settings_label)) {
                         isFabExpanded = false
                         showSettings = true
                     }
@@ -994,7 +1008,7 @@ fun MiniFabItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: St
 @Composable
 fun SiteProfileDialog(
     domain: String,
-    siteProfileRepository: com.example.printedit.data.SiteProfileRepository,
+    siteProfileRepository: jp.webpdf.app.data.SiteProfileRepository,
     onDismiss: () -> Unit,
     onSaveAndReload: () -> Unit,
 ) {
@@ -1009,7 +1023,7 @@ fun SiteProfileDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("サイト設定") },
+        title = { Text(stringResource(R.string.site_settings_title)) },
         text = {
             Column(
                 modifier = Modifier
@@ -1026,7 +1040,7 @@ fun SiteProfileDialog(
 
                 // ── ユーザーエージェント ──────────────────────────────────────
                 Text(
-                    "ユーザーエージェント",
+                    stringResource(R.string.user_agent_label),
                     style = MaterialTheme.typography.labelLarge,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
@@ -1050,23 +1064,23 @@ fun SiteProfileDialog(
 
                 // ── 各種トグル ───────────────────────────────────────────────
                 SiteProfileSwitch(
-                    label = "メニュー表示の修正を強制",
-                    description = "グローバル設定に関わらずこのサイトでメニュー修正を適用",
+                    label = stringResource(R.string.force_menu_fix_label),
+                    description = stringResource(R.string.force_menu_fix_desc),
                     checked = forceMenuFix
                 ) { forceMenuFix = it }
                 SiteProfileSwitch(
-                    label = "遅延画像読み込みをスキップ",
-                    description = "IO パッチが悪影響を及ぼすサイト向け",
+                    label = stringResource(R.string.skip_lazy_load_label),
+                    description = stringResource(R.string.skip_lazy_load_desc),
                     checked = skipLazy
                 ) { skipLazy = it }
                 SiteProfileSwitch(
-                    label = "メディアの自動再生を許可",
-                    description = "動画・音声がタップなしで再生されるようになる",
+                    label = stringResource(R.string.allow_autoplay_label),
+                    description = stringResource(R.string.allow_autoplay_desc),
                     checked = allowAuto
                 ) { allowAuto = it }
                 SiteProfileSwitch(
-                    label = "広告ブロックを無効にする",
-                    description = "このサイトをホワイトリストに追加（広告収入を支援したいサイト等）",
+                    label = stringResource(R.string.disable_ad_block_label),
+                    description = stringResource(R.string.disable_ad_block_desc),
                     checked = disableAds
                 ) { disableAds = it }
 
@@ -1077,7 +1091,7 @@ fun SiteProfileDialog(
 
                 // ── カスタム CSS ──────────────────────────────────────────────
                 Text(
-                    "カスタム CSS（省略可）",
+                    stringResource(R.string.custom_css_label),
                     style = MaterialTheme.typography.labelLarge,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
@@ -1102,7 +1116,7 @@ fun SiteProfileDialog(
 
                 // ── カスタム JavaScript ───────────────────────────────────────
                 Text(
-                    "カスタム JavaScript（省略可）",
+                    stringResource(R.string.custom_js_label),
                     style = MaterialTheme.typography.labelLarge,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
@@ -1139,7 +1153,7 @@ fun SiteProfileDialog(
                             1.dp, MaterialTheme.colorScheme.error
                         )
                     ) {
-                        Text("このサイトの設定を削除して再読み込み")
+                        Text(stringResource(R.string.delete_site_settings_btn))
                     }
                 }
             }
@@ -1160,11 +1174,11 @@ fun SiteProfileDialog(
                 )
                 onSaveAndReload()
             }) {
-                Text("保存して再読み込み")
+                Text(stringResource(R.string.save_and_reload_btn))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("キャンセル") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         }
     )
 }

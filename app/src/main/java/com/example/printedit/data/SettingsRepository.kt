@@ -1,4 +1,4 @@
-package com.example.printedit.data
+package jp.webpdf.app.data
 
 import android.content.Context
 import android.content.SharedPreferences
@@ -16,10 +16,15 @@ class SettingsRepository(context: Context) {
     // Default enabled actions
     private val defaultMenuActions = setOf(
         "action_remove_ads",
+        "action_remove_article_bottom",
+        "action_collapse_empty",
         "action_presets",
         "action_adjust_images",
         "action_remove_elements",
         "action_undo",
+        "action_marquee",
+        "action_batch_print",
+        "action_save_url",
         "action_text_only",
         "action_grayscale",
         "action_remove_background"

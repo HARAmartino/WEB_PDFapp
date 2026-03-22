@@ -1,4 +1,4 @@
-package com.example.printedit.ui
+package jp.webpdf.app.ui
 
 // Common JS functions for Gizmodo/Web Edit features
 

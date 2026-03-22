@@ -1,4 +1,4 @@
-package com.example.printedit.ui
+package jp.webpdf.app.ui
 
 import android.net.Uri
 import androidx.compose.animation.animateColorAsState
@@ -30,7 +30,9 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.printedit.data.SavedUrlRepository
+import androidx.compose.ui.res.stringResource
+import jp.webpdf.app.R
+import jp.webpdf.app.data.SavedUrlRepository
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -170,7 +172,7 @@ fun HomeScreen(
                         ),
                         decorationBox = { innerTextField ->
                             if (searchText.isEmpty()) {
-                                Text("検索、またはURLを入力", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f), fontSize = 16.sp)
+                                Text(stringResource(R.string.search_hint), color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f), fontSize = 16.sp)
                             }
                             innerTextField()
                         }
@@ -191,7 +193,7 @@ fun HomeScreen(
                             savedUrls = savedUrlRepo.getAll()
                             searchText = ""
                             focusManager.clearFocus()
-                            android.widget.Toast.makeText(context, "URLを保存しました", android.widget.Toast.LENGTH_SHORT).show()
+                            android.widget.Toast.makeText(context, context.getString(R.string.url_saved), android.widget.Toast.LENGTH_SHORT).show()
                             // バックグラウンドでページタイトルを取得して上書き
                             coroutineScope.launch {
                                 val title = fetchPageTitle(url)
@@ -219,7 +221,7 @@ fun HomeScreen(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "📌 印刷待ち (${savedUrls.size}件)",
+                        text = stringResource(R.string.bookmark_list_title, savedUrls.size),
                         color = MaterialTheme.colorScheme.onBackground,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium
@@ -229,7 +231,7 @@ fun HomeScreen(
                             savedUrlRepo.deleteAll()
                             savedUrls = savedUrlRepo.getAll()
                         }) {
-                            Text("すべて削除", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
+                            Text(stringResource(R.string.delete_all), color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
                         }
                     }
                 }
@@ -267,7 +269,7 @@ fun HomeScreen(
                                 // Content
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = savedUrl.title.ifBlank { "無題" },
+                                        text = savedUrl.title.ifBlank { stringResource(R.string.untitled) },
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         fontSize = 14.sp,
                                         fontWeight = FontWeight.Medium,
@@ -309,7 +311,7 @@ fun HomeScreen(
                                 ) {
                                     Icon(
                                         Icons.Default.Delete,
-                                        contentDescription = "削除",
+                                        contentDescription = null,
                                         tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f),
                                         modifier = Modifier.size(18.dp)
                                     )

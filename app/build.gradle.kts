@@ -3,16 +3,21 @@ plugins {
     alias(libs.plugins.jetbrains.kotlin.android)
 }
 
+// ビルド出力をプロジェクトフォルダ内に固定することで
+// Gradle キャッシュ (C:\) とプロジェクト (G:\) の
+// ドライブ違いによる relativize() 失敗を回避する
+layout.buildDirectory.set(projectDir.resolve("build"))
+
 android {
-    namespace = "com.example.printedit"
-    compileSdk = 34
+    namespace = "jp.webpdf.app"
+    compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.printedit"
+        applicationId = "jp.webpdf.app"
         minSdk = 24
-        targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        targetSdk = 35
+        versionCode = 3
+        versionName = "1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -23,10 +28,16 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // クラッシュ解析用マッピングファイルを保持
+            isDebuggable = false
+            ndk {
+                debugSymbolLevel = "FULL"
+            }
         }
     }
     compileOptions {
@@ -36,11 +47,14 @@ android {
     kotlinOptions {
         jvmTarget = "1.8"
     }
+    tasks.withType<JavaCompile>().configureEach {
+        options.compilerArgs.add("-Xlint:-options")
+    }
     buildFeatures {
         compose = true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.1"
+        kotlinCompilerExtensionVersion = "1.5.14"
     }
     packaging {
         resources {
