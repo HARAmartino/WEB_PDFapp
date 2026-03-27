@@ -50,7 +50,6 @@
     <string name="action_label_remove_elements">Suppr. élément</string>
     <string name="action_label_undo">Annuler</string>
     <string name="action_label_marquee">Sélection glisser</string>
-    <string name="action_label_batch_print">Impr. par lot</string>
     <string name="action_label_save_url">Enreg. URL</string>
     <string name="action_label_text_only">Texte seul</string>
     <string name="action_label_grayscale">Niveaux de gris</string>
@@ -87,8 +86,6 @@
     <string name="undo_done_toast">Retour à l\'état précédent</string>
     <string name="marquee_label">Sélection glisser</string>
     <string name="marquee_hint_toast">Appuyez longuement puis faites glisser pour sélectionner</string>
-    <string name="batch_print_label">Impr. par lot</string>
-    <string name="batch_print_hint_toast">Sélectionnez d\'abord le texte, puis appuyez sur ce bouton</string>
     <string name="image_adjust_label">Ajuster images</string>
     <string name="image_adjusted_toast">Images ajustées</string>
     <string name="text_only_off_label">Afficher images</string>

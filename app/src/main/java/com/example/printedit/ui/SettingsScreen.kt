@@ -181,7 +181,6 @@ fun SettingsScreen(
                     "action_remove_elements" to stringResource(R.string.action_label_remove_elements),
                     "action_undo" to stringResource(R.string.action_label_undo),
                     "action_marquee" to stringResource(R.string.action_label_marquee),
-                    "action_batch_print" to stringResource(R.string.action_label_batch_print),
                     "action_save_url" to stringResource(R.string.action_label_save_url),
                     "action_text_only" to stringResource(R.string.action_label_text_only),
                     "action_grayscale" to stringResource(R.string.action_label_grayscale),

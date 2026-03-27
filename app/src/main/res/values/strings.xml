@@ -58,7 +58,6 @@
     <string name="action_label_remove_elements">要素を削除</string>
     <string name="action_label_undo">元に戻す</string>
     <string name="action_label_marquee">ドラッグ選択</string>
-    <string name="action_label_batch_print">範囲選択で印刷</string>
     <string name="action_label_save_url">URLを保存</string>
     <string name="action_label_text_only">文字のみ表示</string>
     <string name="action_label_grayscale">白黒モード</string>
@@ -97,8 +96,6 @@
     <string name="undo_done_toast">一つ前の状態に戻しました</string>
     <string name="marquee_label">ドラッグ選択</string>
     <string name="marquee_hint_toast">長押ししてからドラッグで選択</string>
-    <string name="batch_print_label">範囲選択で印刷</string>
-    <string name="batch_print_hint_toast">テキストを範囲選択してからこのボタンを押してください</string>
     <string name="image_adjust_label">画像調整</string>
     <string name="image_adjusted_toast">画像を調整しました</string>
     <string name="text_only_off_label">文字のみ表示を解除</string>

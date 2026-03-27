@@ -50,7 +50,6 @@
     <string name="action_label_remove_elements">तत्व हटाएं</string>
     <string name="action_label_undo">पूर्ववत करें</string>
     <string name="action_label_marquee">ड्रैग चुनाव</string>
-    <string name="action_label_batch_print">बैच प्रिंट</string>
     <string name="action_label_save_url">URL सहेजें</string>
     <string name="action_label_text_only">केवल टेक्स्ट</string>
     <string name="action_label_grayscale">ग्रेस्केल</string>
@@ -87,8 +86,6 @@
     <string name="undo_done_toast">पिछली स्थिति में वापस आया</string>
     <string name="marquee_label">ड्रैग चुनाव</string>
     <string name="marquee_hint_toast">चुनने के लिए लंबे समय तक दबाएं और खींचें</string>
-    <string name="batch_print_label">बैच प्रिंट</string>
-    <string name="batch_print_hint_toast">पहले टेक्स्ट चुनें, फिर इस बटन को दबाएं</string>
     <string name="image_adjust_label">छवि फिट करें</string>
     <string name="image_adjusted_toast">छवियाँ समायोजित की गईं</string>
     <string name="text_only_off_label">छवियाँ दिखाएं</string>

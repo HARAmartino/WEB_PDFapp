@@ -25,6 +25,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -716,13 +717,19 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                         ) { isFabExpanded = false }
                 )
                 
-                // Vertical FAB Menu
-                Column(
+                // Vertical FAB Menu (scrollable window)
+                val fabMenuScrollState = rememberScrollState()
+                val maxMenuHeight = (LocalConfiguration.current.screenHeightDp * 0.70f).dp
+                Box(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .padding(end = 16.dp, bottom = 88.dp), // Positioned above the main FAB
+                        .padding(end = 16.dp, bottom = 88.dp)
+                        .heightIn(max = maxMenuHeight)
+                ) {
+                Column(
+                    modifier = Modifier.verticalScroll(fabMenuScrollState),
                     horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     
                     // ホーム
@@ -838,24 +845,8 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                         }
                     }
 
-                    // 範囲選択で印刷
-                    if (menuActions.contains("action_batch_print")) {
-                        MiniFabItem(icon = Icons.Filled.ContentCut, label = stringResource(R.string.batch_print_label)) {
-                            isFabExpanded = false
-                            webViewRef?.evaluateJavascript(getLinksInSelectionJs) { json ->
-                                if (json != null && json != "null" && json != "[]" && json != "\"[]\"") {
-                                    var cleanJson = json
-                                    if (cleanJson.startsWith("\"") && cleanJson.endsWith("\"")) {
-                                        cleanJson = cleanJson.substring(1, cleanJson.length - 1).replace("\\\"", "\"").replace("\\\\", "\\")
-                                    }
-                                    selectedLinksJson = cleanJson
-                                    showBatchDialog = true
-                                } else {
-                                    Toast.makeText(context, context.getString(R.string.batch_print_hint_toast), Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        }
-                    }
+
+
 
                     // プリセット
                     if (menuActions.contains("action_presets")) {
@@ -933,7 +924,8 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                         isFabExpanded = false
                         showSettings = true
                     }
-                }
+                } // Column
+                } // Box
             }
 
             // Main FAB (bottom-end)
@@ -944,10 +936,12 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(16.dp)
+                    .size(68.dp)
             ) {
                 Icon(
                     imageVector = if (isFabExpanded) Icons.Filled.Close else Icons.Filled.Add,
-                    contentDescription = "Menu"
+                    contentDescription = "Menu",
+                    modifier = Modifier.size(28.dp)
                 )
             }
 

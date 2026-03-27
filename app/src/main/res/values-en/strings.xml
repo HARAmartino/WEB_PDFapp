@@ -50,7 +50,6 @@
     <string name="action_label_remove_elements">Remove Element</string>
     <string name="action_label_undo">Undo</string>
     <string name="action_label_marquee">Drag Select</string>
-    <string name="action_label_batch_print">Batch Print</string>
     <string name="action_label_save_url">Save URL</string>
     <string name="action_label_text_only">Text Only</string>
     <string name="action_label_grayscale">Grayscale</string>
@@ -87,8 +86,6 @@
     <string name="undo_done_toast">Reverted to previous state</string>
     <string name="marquee_label">Drag Select</string>
     <string name="marquee_hint_toast">Long-press then drag to select</string>
-    <string name="batch_print_label">Batch Print</string>
-    <string name="batch_print_hint_toast">Select text first, then tap this button</string>
     <string name="image_adjust_label">Fit Images</string>
     <string name="image_adjusted_toast">Images adjusted</string>
     <string name="text_only_off_label">Show Images</string>

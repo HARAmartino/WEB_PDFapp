@@ -23,7 +23,6 @@ class SettingsRepository(context: Context) {
         "action_remove_elements",
         "action_undo",
         "action_marquee",
-        "action_batch_print",
         "action_save_url",
         "action_text_only",
         "action_grayscale",

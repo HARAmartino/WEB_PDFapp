@@ -50,7 +50,6 @@
     <string name="action_label_remove_elements">删除元素</string>
     <string name="action_label_undo">撤销</string>
     <string name="action_label_marquee">拖动选择</string>
-    <string name="action_label_batch_print">批量打印</string>
     <string name="action_label_save_url">保存网址</string>
     <string name="action_label_text_only">纯文字</string>
     <string name="action_label_grayscale">灰度模式</string>
@@ -87,8 +86,6 @@
     <string name="undo_done_toast">已恢复到上一状态</string>
     <string name="marquee_label">拖动选择</string>
     <string name="marquee_hint_toast">长按后拖动以选择</string>
-    <string name="batch_print_label">批量打印</string>
-    <string name="batch_print_hint_toast">先选择文本，然后点击此按钮</string>
     <string name="image_adjust_label">适配图片</string>
     <string name="image_adjusted_toast">图片已调整</string>
     <string name="text_only_off_label">显示图片</string>

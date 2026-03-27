@@ -50,7 +50,6 @@
     <string name="action_label_remove_elements">Quitar elemento</string>
     <string name="action_label_undo">Deshacer</string>
     <string name="action_label_marquee">Selección arrastre</string>
-    <string name="action_label_batch_print">Impr. por lotes</string>
     <string name="action_label_save_url">Guardar URL</string>
     <string name="action_label_text_only">Solo texto</string>
     <string name="action_label_grayscale">Escala de grises</string>
@@ -87,8 +86,6 @@
     <string name="undo_done_toast">Revertido al estado anterior</string>
     <string name="marquee_label">Selección arrastre</string>
     <string name="marquee_hint_toast">Mantén pulsado y arrastra para seleccionar</string>
-    <string name="batch_print_label">Impr. por lotes</string>
-    <string name="batch_print_hint_toast">Selecciona texto primero, luego pulsa este botón</string>
     <string name="image_adjust_label">Ajustar imágenes</string>
     <string name="image_adjusted_toast">Imágenes ajustadas</string>
     <string name="text_only_off_label">Mostrar imágenes</string>
