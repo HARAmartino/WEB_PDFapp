@@ -292,13 +292,13 @@ fun BatchLinkPrintDialog(
 
             // Apply JS transformations
             withContext(Dispatchers.Main) {
-                val baseJs = removeAdsJs + "\n" + toggleTextOnlyJs + "\n" + toggleGrayscaleJs + "\n" + toggleNoBackgroundJs
+                val baseJs = removeAdsJs + "\n" + toggleTextOnlyJs + "\n" + toggleGrayscaleJs + "\n" + toggleNoBackgroundJs + "\n" + toggleImageAdjustJs
                 wv.evaluateJavascript(baseJs, null)
                 if (isAdsRemoved) wv.evaluateJavascript("if(window.peToggleRemoveAds) window.peToggleRemoveAds(true);", null)
                 if (isTextOnly) wv.evaluateJavascript("if(window.toggleTextOnly) window.toggleTextOnly(true);", null)
                 if (isGrayscale) wv.evaluateJavascript("if(window.toggleGrayscale) window.toggleGrayscale(true);", null)
                 if (isRemoveBackground) wv.evaluateJavascript("if(window.toggleNoBackground) window.toggleNoBackground(true);", null)
-                if (isImageAdjusted) wv.evaluateJavascript(smartFitImagesJs, null)
+                if (isImageAdjusted) wv.evaluateJavascript("if(window.toggleImageAdjust) window.toggleImageAdjust(true);", null)
                 // 遅延ロード画像を強制展開
                 wv.evaluateJavascript(forceLoadLazyImagesJs, null)
             }

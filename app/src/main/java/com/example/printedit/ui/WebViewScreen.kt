@@ -90,23 +90,20 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
     var isRemoveElementMode by remember { mutableStateOf(false) }
 
     // Navigation Handler
-    if (showSettings) {
-        BackHandler { showSettings = false }
-    } else {
-        BackHandler {
-            when {
-                isFabExpanded -> isFabExpanded = false
-                isRemoveElementMode -> {
-                    isRemoveElementMode = false
-                    webViewRef?.evaluateJavascript("if(window.toggleRemoveElementMode) window.toggleRemoveElementMode(false);", null)
-                }
-                isMarqueeMode -> {
-                    isMarqueeMode = false
-                    webViewRef?.evaluateJavascript("if(window.toggleMarqueeMode) window.toggleMarqueeMode(false);", null)
-                }
-                webViewRef?.canGoBack() == true -> webViewRef?.goBack()
-                else -> onExit()
+    BackHandler {
+        when {
+            showSettings -> showSettings = false
+            isFabExpanded -> isFabExpanded = false
+            isRemoveElementMode -> {
+                isRemoveElementMode = false
+                webViewRef?.evaluateJavascript("if(window.toggleRemoveElementMode) window.toggleRemoveElementMode(false);", null)
             }
+            isMarqueeMode -> {
+                isMarqueeMode = false
+                webViewRef?.evaluateJavascript("if(window.toggleMarqueeMode) window.toggleMarqueeMode(false);", null)
+            }
+            webViewRef?.canGoBack() == true -> webViewRef?.goBack()
+            else -> onExit()
         }
     }
 
@@ -376,7 +373,7 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                                     view.evaluateJavascript("delete window.injected_GizmodoUtils; delete window.injected_MarqueeSelection; delete window.injected_RemoveElement; delete window.injected_MenuFix; delete window._peForceLoadRunning;", null)
                                     // Inject Core Functionality (lastInjectedUrl は onPageStarted でリセット済み)
                                     if (url != lastInjectedUrl) {
-                                        safeInjectJs(view, "GizmodoUtils", removeAdsJs + toggleTextOnlyJs + toggleGrayscaleJs + toggleNoBackgroundJs) 
+                                        safeInjectJs(view, "GizmodoUtils", removeAdsJs + toggleTextOnlyJs + toggleGrayscaleJs + toggleNoBackgroundJs + toggleImageAdjustJs) 
                                         safeInjectJs(view, "MarqueeSelection", marqueeSelectionJs)
                                         safeInjectJs(view, "RemoveElement", toggleRemoveElementModeJs)
                                         lastInjectedUrl = url
@@ -402,7 +399,7 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                                         }, 500)
                                     }
                                     if (settingsRepository.autoImageAdjust) {
-                                        view.evaluateJavascript(smartFitImagesJs, null)
+                                        view.evaluateJavascript("if(window.toggleImageAdjust) window.toggleImageAdjust(true);", null)
                                     }
                                     // Apply menu fix if enabled（グローバル設定 or サイトプロファイルで強制）
                                     if (settingsRepository.menuFixEnabled || siteProfile?.forceMenuFix == true) {
@@ -677,9 +674,7 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                                                 if (preset.adsRemoved) {
                                                     webViewRef?.evaluateJavascript("if(window.peToggleRemoveAds) window.peToggleRemoveAds(true);", null)
                                                 }
-                                                if (preset.imageAdjusted) {
-                                                    webViewRef?.evaluateJavascript(smartFitImagesJs, null)
-                                                }
+                                                webViewRef?.evaluateJavascript("if(window.toggleImageAdjust) window.toggleImageAdjust(${preset.imageAdjusted});", null)
 
                                                 if (preset.selectors.isNotEmpty()) {
                                                     // JSON は有効な JS 式なので文字列ラップ不要。エスケープ問題を完全に回避する
@@ -723,7 +718,7 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .padding(end = 16.dp, bottom = 88.dp)
+                        .padding(end = 16.dp, bottom = 148.dp)
                         .heightIn(max = maxMenuHeight)
                 ) {
                 Column(
@@ -858,11 +853,17 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
 
                     // 画像調整
                     if (menuActions.contains("action_adjust_images")) {
-                        MiniFabItem(icon = Icons.Filled.Image, label = stringResource(R.string.image_adjust_label)) {
+                        MiniFabItem(
+                            icon = Icons.Filled.Image, 
+                            label = if (isImageAdjusted) stringResource(R.string.text_only_off_label) else stringResource(R.string.image_adjust_label)
+                        ) {
                             isFabExpanded = false
-                            isImageAdjusted = true
-                            webViewRef?.evaluateJavascript(smartFitImagesJs, null)
-                            Toast.makeText(context, context.getString(R.string.image_adjusted_toast), Toast.LENGTH_SHORT).show()
+                            val newVal = !isImageAdjusted
+                            isImageAdjusted = newVal
+                            webViewRef?.evaluateJavascript("if(window.toggleImageAdjust) window.toggleImageAdjust($newVal);", null)
+                            if (newVal) {
+                                Toast.makeText(context, context.getString(R.string.image_adjusted_toast), Toast.LENGTH_SHORT).show()
+                            }
                         }
                     }
 
@@ -935,7 +936,7 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                 contentColor = if (isFabExpanded) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onPrimary,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(16.dp)
+                    .padding(end = 16.dp, bottom = 72.dp)
                     .size(68.dp)
             ) {
                 Icon(

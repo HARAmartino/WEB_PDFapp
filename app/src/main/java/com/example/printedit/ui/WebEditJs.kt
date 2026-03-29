@@ -1139,52 +1139,6 @@ val forceLoadLazyImagesJs = """
         return true;
     }
 
-    // Override IntersectionObserver.prototype.observe so future observations
-    // immediately fire the callback with isIntersecting=true
-    if (!window._peIOPatched) {
-        window._peIOPatched = true;
-        try {
-            var _origObserve = IntersectionObserver.prototype.observe;
-            IntersectionObserver.prototype.observe = function(target) {
-                _origObserve.call(this, target);
-                var self = this;
-                // Find the callback: try __pe_cb first, then fall back to internal callback property
-                var cb = self['__pe_cb'] || self['callback'] || null;
-                // Some browsers store callback in a different internal slot; try takeRecords + manual trigger
-                if (cb) {
-                    requestAnimationFrame(function() {
-                        try {
-                            var rect = target.getBoundingClientRect();
-                            cb([{
-                                isIntersecting: true, intersectionRatio: 1,
-                                target: target,
-                                boundingClientRect: rect, intersectionRect: rect,
-                                rootBounds: null, time: performance.now()
-                            }], self);
-                        } catch(e) {}
-                    });
-                } else {
-                    // Fallback: manually disconnect and re-observe to force trigger
-                    requestAnimationFrame(function() {
-                        try {
-                            target.style.visibility = target.style.visibility || '';
-                            // Force a style recalculation to trigger observer
-                            void target.offsetHeight;
-                        } catch(e) {}
-                    });
-                }
-            };
-            // Intercept constructor to capture callback reference
-            var _NativeIO = window.IntersectionObserver;
-            window.IntersectionObserver = function(cb, opts) {
-                var io = new _NativeIO(cb, opts);
-                io['__pe_cb'] = cb;
-                return io;
-            };
-            window.IntersectionObserver.prototype = _NativeIO.prototype;
-        } catch(e) {}
-    }
-
     // Extract images from <noscript> tags (some sites put real images inside noscript as JS-off fallback)
     function extractNoscriptImages() {
         document.querySelectorAll('noscript').forEach(function(ns) {
@@ -1244,19 +1198,6 @@ val forceLoadLazyImagesJs = """
 
         // Extract noscript images
         extractNoscriptImages();
-
-        // Trigger scroll/resize events to activate IntersectionObserver-based loaders
-        // Use requestAnimationFrame to allow layout to complete between scroll events
-        window.dispatchEvent(new Event('scroll', {bubbles: true}));
-        window.dispatchEvent(new Event('resize'));
-
-        // Trigger lazy loaders on scrollable containers (limit to reasonable count)
-        var scrollables = document.querySelectorAll('[style*="overflow"], [class*="scroll"], main, article, .content, #content');
-        scrollables.forEach(function(el) {
-            if (el.scrollHeight > el.clientHeight + 50) {
-                el.dispatchEvent(new Event('scroll', {bubbles: true}));
-            }
-        });
     }
 
     // Staggered force-load with increasing delays
@@ -1286,17 +1227,44 @@ val forceLoadLazyImagesJs = """
 })();
 """.trimIndent()
 
-// 5b. Image Adjustment (Fit to Screen)
-val smartFitImagesJs = """
-(function() {
-    var images = document.querySelectorAll('img');
-    images.forEach(function(img) {
-        if (img.width > window.innerWidth) {
-            img.style.maxWidth = '100%';
-            img.style.height = 'auto';
+val toggleImageAdjustJs = """
+window.toggleImageAdjust = function(enable) {
+    window._peImageAdjustActive = enable;
+    
+    if (!window.peApplyImageAdjust) {
+        window.peApplyImageAdjust = function() {
+            if (!window._peImageAdjustActive) return;
+            var w = window.innerWidth;
+            document.querySelectorAll('img, picture').forEach(function(img) {
+                if (img.getBoundingClientRect().width > w) {
+                    img.style.maxWidth = '100%';
+                    img.style.height = 'auto';
+                }
+            });
+        };
+    }
+
+    if (enable) {
+        peApplyImageAdjust();
+        if (!window._peImgResizeObs) {
+            window._peImgResizeObs = new MutationObserver(function() {
+                if (window._peImageAdjustActive) {
+                    clearTimeout(window._peImgAdjTimer);
+                    window._peImgAdjTimer = setTimeout(window.peApplyImageAdjust, 100);
+                }
+            });
+            if (document.body) {
+                window._peImgResizeObs.observe(document.body, {childList: true, subtree: true, attributes: true, attributeFilter: ['src', 'srcset', 'class']});
+            }
         }
-    });
-})();
+    } else {
+        // オフにした時は監視を少し休止させる（既存画像の復元は仕組み上不可能なのでそのまま）
+        if (window._peImgResizeObs) {
+            window._peImgResizeObs.disconnect();
+            window._peImgResizeObs = null;
+        }
+    }
+};
 """.trimIndent()
 
 // 6. Menu Fix code removed to use the updated menuFixJs at the bottom of the file
@@ -1376,10 +1344,12 @@ val menuFixJs = """
                 }
             });
             
-            // Second pass: Find ANY element covering the whole screen (width > 80vw, height > 80vh) that is position: fixed and translucent
+            // Second pass: Find ANY element covering the whole screen that is fixed and translucent.
+            // Limit to direct children of body or #__next to avoid scanning thousands of deep divs.
             var ww = window.innerWidth;
             var wh = window.innerHeight;
-            document.querySelectorAll('div, section, aside, form').forEach(function(el) {
+            var rootDivs = document.querySelectorAll('body > div, body > section, body > aside, body > form, #__next > div, #__nuxt > div');
+            rootDivs.forEach(function(el) {
                 var cs = window.getComputedStyle(el);
                 if (cs.position === 'fixed' || cs.position === 'absolute') {
                     if (el.offsetWidth > ww * 0.8 && el.offsetHeight > wh * 0.8) {
@@ -1419,16 +1389,16 @@ val menuFixJs = """
         var menuObserver = new MutationObserver(function(mutations) {
             var shouldFix = false;
             for (var i = 0; i < mutations.length; i++) {
-                if (mutations[i].addedNodes.length > 0 || mutations[i].attributeName === 'class' || mutations[i].attributeName === 'style') {
+                if (mutations[i].addedNodes.length > 0) {
                     shouldFix = true; break;
                 }
             }
             if (shouldFix) {
                 clearTimeout(window._peMenuFixTimer);
-                window._peMenuFixTimer = setTimeout(fixTransparentMenus, 150);
+                window._peMenuFixTimer = setTimeout(fixTransparentMenus, 500);
             }
         });
-        menuObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
+        menuObserver.observe(document.body, { childList: true, subtree: true });
     }
 })();
 """.trimIndent()
