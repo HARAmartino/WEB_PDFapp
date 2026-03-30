@@ -172,6 +172,10 @@ window.peToggleRemoveAds = function(enable) {
     // Ensure the data-attribute CSS rule exists
     function ensureDataAttrRule() {
         addCssHideRule('[data-pe-ad-hidden]');
+        var style = ensureStylesheet();
+        if (style.textContent.indexOf('[data-pe-ad-collapsed]') === -1) {
+            style.textContent += '[data-pe-ad-collapsed]{min-height:0!important;height:auto!important;padding-top:0!important;padding-bottom:0!important;margin-top:0!important;margin-bottom:0!important;}\n';
+        }
     }
 
     // After ad elements are hidden, collapse parent containers that became empty.
@@ -219,12 +223,7 @@ window.peToggleRemoveAds = function(enable) {
                             }
                         }
                         if (!hasVisibleText) {
-                            parent.style.setProperty('min-height', '0', 'important');
-                            parent.style.setProperty('height', 'auto', 'important');
-                            parent.style.setProperty('padding-top', '0', 'important');
-                            parent.style.setProperty('padding-bottom', '0', 'important');
-                            parent.style.setProperty('margin-top', '0', 'important');
-                            parent.style.setProperty('margin-bottom', '0', 'important');
+                            parent.setAttribute('data-pe-ad-collapsed', '1');
                         }
                     }
                     break;
@@ -233,34 +232,11 @@ window.peToggleRemoveAds = function(enable) {
         });
     }
 
-    function clean() {
-        ensureDataAttrRule();
-
-        // Mark elements matched by selectors
-        selectors.forEach(function(sel) {
-            try {
-                document.querySelectorAll(sel).forEach(function(el) {
-                    markAdElement(el);
-                    // Hide parent wrappers that are left empty or just contain ad labels
-                    var parent = el.parentElement;
-                    var depth = 0;
-                    while (parent && parent !== document.body && depth < 5) {
-                        var text = parent.textContent.replace(/Advertisement|広告|PR|Sponsored|スポンサーリンク/g, '').trim();
-                        if (text === '') {
-                            markAdElement(parent);
-                            parent = parent.parentElement;
-                            depth++;
-                        } else {
-                            break;
-                        }
-                    }
-                });
-            } catch(e) {}
-        });
-
-        // Floating corner video ads (position:fixed, small-ish, contains video)
+    function peHeavyScan() {
         var vw = window.innerWidth;
         var vh = window.innerHeight;
+
+        // Floating corner video ads
         document.querySelectorAll('div, section, aside, figure').forEach(function(el) {
             if (el.getAttribute('data-pe-ad-hidden')) return;
             var cs = window.getComputedStyle(el);
@@ -356,42 +332,47 @@ window.peToggleRemoveAds = function(enable) {
                 depth++;
             }
         });
+    }
+
+    function clean() {
+        ensureDataAttrRule();
+
+        // Mark elements matched by selectors
+        selectors.forEach(function(sel) {
+            try {
+                document.querySelectorAll(sel).forEach(function(el) {
+                    markAdElement(el);
+                    // Hide parent wrappers that are left empty or just contain ad labels
+                    var parent = el.parentElement;
+                    var depth = 0;
+                    while (parent && parent !== document.body && depth < 5) {
+                        var text = parent.textContent.replace(/Advertisement|広告|PR|Sponsored|スポンサーリンク/g, '').trim();
+                        if (text === '') {
+                            markAdElement(parent);
+                            parent = parent.parentElement;
+                            depth++;
+                        } else {
+                            break;
+                        }
+                    }
+                });
+            } catch(e) {}
+        });
+
+        if (!window._peHeavyScanDone) {
+            window._peHeavyScanDone = true;
+            setTimeout(peHeavyScan, 5000);
+        }
 
         // Collapse empty parent containers left behind after ad removal
         collapseEmptyAdContainers();
     }
 
-    // Override HTMLVideoElement.prototype.play to intercept ad video playback
-    if (!window._peVideoPlayOverridden) {
-        window._peVideoPlayOverridden = true;
-        var origPlay = HTMLVideoElement.prototype.play;
-        HTMLVideoElement.prototype.play = function() {
-            var el = this;
-            var parent = el.parentElement;
-            var depth = 0;
-            while (parent && parent !== document.body && depth < 6) {
-                var cls = (parent.className || '').toLowerCase();
-                var id  = (parent.id || '').toLowerCase();
-                if (cls.indexOf('ad') !== -1 || id.indexOf('ad') !== -1 ||
-                    cls.indexOf('connatix') !== -1 || cls.indexOf('vidazoo') !== -1 ||
-                    cls.indexOf('vjs-ad') !== -1 || cls.indexOf('jw-ad') !== -1 ||
-                    id.indexOf('connatix') !== -1 || id.indexOf('vidazoo') !== -1) {
-                    el.muted = true;
-                    el.setAttribute('data-pe-ad-hidden', '1');
-                    return Promise.resolve();
-                }
-                parent = parent.parentElement;
-                depth++;
-            }
-            return origPlay.apply(el, arguments);
-        };
-    }
-
     // Apply CSS rules for all static selectors
     applyStaticRules();
 
-    // Run heuristic clean immediately
-    clean();
+    // Run heuristic clean delayed to allow React hydration to complete
+    setTimeout(clean, 3000);
 
     // Run persistently (MutationObserver) — DEBOUNCED to prevent flickering
     if (!window._peAdObserver) {
@@ -406,7 +387,7 @@ window.peToggleRemoveAds = function(enable) {
                 _peIsCleaning = true;
                 clean();
                 _peIsCleaning = false;
-            }, 200);
+            }, 1000);
         });
         window._peAdObserver.observe(document.body, { childList: true, subtree: true });
     }
@@ -414,14 +395,18 @@ window.peToggleRemoveAds = function(enable) {
     // Reduced interval (6 runs × 10s = 60s total) for stubborn ads that get dynamically re-injected
     if (!window._peAdInterval) {
         var cleanCount = 0;
-        window._peAdInterval = setInterval(function() {
-            clean();
-            cleanCount++;
-            if (cleanCount >= 6) {
-                clearInterval(window._peAdInterval);
-                window._peAdInterval = null;
+        setTimeout(function() {
+            if (!window._peAdInterval) {
+                window._peAdInterval = setInterval(function() {
+                    clean();
+                    cleanCount++;
+                    if (cleanCount >= 6) {
+                        clearInterval(window._peAdInterval);
+                        window._peAdInterval = null;
+                    }
+                }, 10000);
             }
-        }, 10000);
+        }, 5000);
     }
 };
 """.trimIndent()
@@ -1377,13 +1362,6 @@ val menuFixJs = """
     setTimeout(fixTransparentMenus, 500);
     setTimeout(fixTransparentMenus, 2000);
 
-    /* 再発防止策 (Recurrent prevention): Watch for dynamic menus on SPAs */
-    // 1. Observe clicks (often opens menus)
-    document.addEventListener('click', function() {
-        setTimeout(fixTransparentMenus, 50);
-        setTimeout(fixTransparentMenus, 300);
-    }, { passive: true });
-    
     // 2. Observe DOM mutations for newly added overlays
     if (typeof MutationObserver !== 'undefined' && document.body) {
         var menuObserver = new MutationObserver(function(mutations) {
