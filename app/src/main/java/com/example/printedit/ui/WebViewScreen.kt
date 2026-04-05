@@ -58,7 +58,7 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
 
     // サイトプロファイル用: 現在のページホスト (background thread から AtomicRef で安全にアクセス)
     val currentSiteHostRef = remember { java.util.concurrent.atomic.AtomicReference("") }
-    val isAdsRemovedRef = remember { java.util.concurrent.atomic.AtomicBoolean(settingsRepository.aggressiveAdBlock) }
+    val isAdsRemovedRef = remember { java.util.concurrent.atomic.AtomicBoolean(false) }
     var currentSiteHost by remember { mutableStateOf("") }
     var showSiteProfileDialog by remember { mutableStateOf(false) }
     
@@ -85,7 +85,7 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
     var isTextOnly by remember { mutableStateOf(false) }
     var isGrayscale by remember { mutableStateOf(false) }
     var isNoBackground by remember { mutableStateOf(false) }
-    var isAdsRemoved by remember { mutableStateOf(settingsRepository.aggressiveAdBlock) }
+    var isAdsRemoved by remember { mutableStateOf(false) }
     var isImageAdjusted by remember { mutableStateOf(false) }
     var isRemoveElementMode by remember { mutableStateOf(false) }
 
@@ -383,8 +383,8 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                                     view.evaluateJavascript("if(window.toggleTextOnly) window.toggleTextOnly($isTextOnly);", null)
                                     view.evaluateJavascript("if(window.toggleGrayscale) window.toggleGrayscale($isGrayscale);", null)
                                     view.evaluateJavascript("if(window.toggleNoBackground) window.toggleNoBackground($isNoBackground);", null)
-                                    // 広告ブロックが有効な場合は DOM クリーンアップも実行（空白スキマ除去）
-                                    if (isAdsRemoved || settingsRepository.aggressiveAdBlock) {
+                                    // DOM クリーンアップは手動の「広告削除」有効時のみ実行
+                                    if (isAdsRemoved) {
                                         view.evaluateJavascript("if(window.peToggleRemoveAds) window.peToggleRemoveAds(true);", null)
                                     }
                                     // サイトプロファイル取得（onPageFinished 内で一度だけ取得）
