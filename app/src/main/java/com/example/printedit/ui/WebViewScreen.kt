@@ -76,6 +76,7 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
     
     // UI State
     var isFabExpanded by remember { mutableStateOf(false) }
+    var showFeaturePanel by remember { mutableStateOf(false) }
     var pageLoadProgress by remember { mutableStateOf(100) }
     
     // Settings State — read directly from repository so settings changes are reflected immediately
@@ -93,6 +94,7 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
     BackHandler {
         when {
             showSettings -> showSettings = false
+            showFeaturePanel -> showFeaturePanel = false
             isFabExpanded -> isFabExpanded = false
             isRemoveElementMode -> {
                 isRemoveElementMode = false
@@ -726,6 +728,12 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                     horizontalAlignment = Alignment.End,
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+
+                    // パネルで表示
+                    MiniFabItem(icon = Icons.Filled.OpenInNew, label = stringResource(R.string.fab_open_panel)) {
+                        isFabExpanded = false
+                        showFeaturePanel = true
+                    }
                     
                     // ホーム
                     MiniFabItem(icon = Icons.Filled.Home, label = stringResource(R.string.home)) {
@@ -946,6 +954,146 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                 )
             }
 
+            // ── 機能一覧パネル (ModalBottomSheet) ─────────────────────────
+            if (showFeaturePanel) {
+                FeaturePanelBottomSheet(
+                    onDismiss = { showFeaturePanel = false },
+                    menuActions = menuActions,
+                    // --- callbacks ---
+                    onHome = { showFeaturePanel = false; onExit() },
+                    onPrint = {
+                        showFeaturePanel = false
+                        val activity = context as? android.app.Activity
+                        val doPrint = {
+                            val printManager = context.getSystemService(Context.PRINT_SERVICE) as? android.print.PrintManager
+                            val pageTitle = webViewRef?.title
+                                ?.replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                                ?.trim()
+                                ?.take(80)
+                                ?.ifBlank { null }
+                                ?: "WEB_PDF"
+                            val adapter = webViewRef?.createPrintDocumentAdapter(pageTitle)
+                            if (printManager != null && adapter != null) {
+                                val printAttributes = android.print.PrintAttributes.Builder()
+                                    .setMediaSize(android.print.PrintAttributes.MediaSize.ISO_A4)
+                                    .setMinMargins(android.print.PrintAttributes.Margins.NO_MARGINS)
+                                    .build()
+                                printManager.print(pageTitle, adapter, printAttributes)
+                            }
+                        }
+                        if (activity != null) {
+                            AdManager.showAdIfAvailable(activity, doPrint)
+                        } else {
+                            doPrint()
+                        }
+                    },
+                    onSaveUrl = {
+                        showFeaturePanel = false
+                        webViewRef?.evaluateJavascript("document.title") { rawTitle ->
+                            var title = rawTitle ?: ""
+                            if (title.startsWith("\"") && title.endsWith("\"")) {
+                                title = title.substring(1, title.length - 1)
+                            }
+                            val currentPageUrl = webViewRef?.url ?: url
+                            savedUrlRepository.save(currentPageUrl, title)
+                            Toast.makeText(context, context.getString(R.string.url_saved), Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    isAdsRemoved = isAdsRemoved,
+                    onToggleAds = {
+                        showFeaturePanel = false
+                        val newVal = !isAdsRemoved
+                        isAdsRemoved = newVal
+                        isAdsRemovedRef.set(newVal)
+                        if (newVal) {
+                            webViewRef?.evaluateJavascript("if(window.peToggleRemoveAds) window.peToggleRemoveAds(true);", null)
+                            Toast.makeText(context, context.getString(R.string.ad_block_enabled_toast), Toast.LENGTH_SHORT).show()
+                        } else {
+                            webViewRef?.evaluateJavascript("if(window.peToggleRemoveAds) window.peToggleRemoveAds(false);", null)
+                            Toast.makeText(context, context.getString(R.string.ad_block_stopped_toast), Toast.LENGTH_SHORT).show()
+                            webViewRef?.reload()
+                        }
+                    },
+                    onRemoveArticleBottom = {
+                        showFeaturePanel = false
+                        webViewRef?.evaluateJavascript(removeRelatedArticlesJs, null)
+                        Toast.makeText(context, context.getString(R.string.article_bottom_removed_toast), Toast.LENGTH_SHORT).show()
+                    },
+                    isRemoveElementMode = isRemoveElementMode,
+                    onToggleRemoveElement = {
+                        showFeaturePanel = false
+                        val newMode = !isRemoveElementMode
+                        isRemoveElementMode = newMode
+                        webViewRef?.evaluateJavascript("if(window.toggleRemoveElementMode) window.toggleRemoveElementMode($newMode);", null)
+                        if (newMode) {
+                            Toast.makeText(context, context.getString(R.string.tap_to_remove_toast), Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    onUndo = {
+                        showFeaturePanel = false
+                        webViewRef?.evaluateJavascript("if(window.peUndoLastAction) window.peUndoLastAction();", null)
+                        Toast.makeText(context, context.getString(R.string.undo_done_toast), Toast.LENGTH_SHORT).show()
+                    },
+                    onMarquee = {
+                        showFeaturePanel = false
+                        isMarqueeMode = true
+                        webViewRef?.evaluateJavascript("if(window.toggleMarqueeMode) window.toggleMarqueeMode(true);", null)
+                        Toast.makeText(context, context.getString(R.string.marquee_hint_toast), Toast.LENGTH_SHORT).show()
+                    },
+                    onPresets = {
+                        showFeaturePanel = false
+                        showPresetSelector = true
+                    },
+                    isImageAdjusted = isImageAdjusted,
+                    onToggleImageAdjust = {
+                        showFeaturePanel = false
+                        val newVal = !isImageAdjusted
+                        isImageAdjusted = newVal
+                        webViewRef?.evaluateJavascript("if(window.toggleImageAdjust) window.toggleImageAdjust($newVal);", null)
+                        if (newVal) {
+                            Toast.makeText(context, context.getString(R.string.image_adjusted_toast), Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    isTextOnly = isTextOnly,
+                    onToggleTextOnly = {
+                        showFeaturePanel = false
+                        val newVal = !isTextOnly
+                        isTextOnly = newVal
+                        webViewRef?.evaluateJavascript("if(window.toggleTextOnly) window.toggleTextOnly($newVal);", null)
+                    },
+                    isGrayscale = isGrayscale,
+                    onToggleGrayscale = {
+                        showFeaturePanel = false
+                        val newVal = !isGrayscale
+                        isGrayscale = newVal
+                        webViewRef?.evaluateJavascript("if(window.toggleGrayscale) window.toggleGrayscale($newVal);", null)
+                    },
+                    isNoBackground = isNoBackground,
+                    onToggleNoBackground = {
+                        showFeaturePanel = false
+                        val newVal = !isNoBackground
+                        isNoBackground = newVal
+                        webViewRef?.evaluateJavascript("if(window.toggleNoBackground) window.toggleNoBackground($newVal);", null)
+                    },
+                    onConfigureSite = {
+                        showFeaturePanel = false
+                        val host = webViewRef?.url?.let {
+                            android.net.Uri.parse(it).host?.removePrefix("www.")?.lowercase()
+                        }.orEmpty()
+                        if (host.isNotEmpty()) {
+                            currentSiteHost = host
+                            showSiteProfileDialog = true
+                        } else {
+                            Toast.makeText(context, context.getString(R.string.load_page_first_toast), Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    onSettings = {
+                        showFeaturePanel = false
+                        showSettings = true
+                    }
+                )
+            }
+
             // Settings overlay — rendered on top of browser so WebView is never destroyed
             if (showSettings) {
                 SettingsScreen(onNavigateBack = { showSettings = false })
@@ -995,6 +1143,162 @@ fun MiniFabItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: St
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 機能一覧パネル (BottomSheet)
+// ─────────────────────────────────────────────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FeaturePanelBottomSheet(
+    onDismiss: () -> Unit,
+    menuActions: Set<String>,
+    // --- callbacks ---
+    onHome: () -> Unit,
+    onPrint: () -> Unit,
+    onSaveUrl: () -> Unit,
+    isAdsRemoved: Boolean,
+    onToggleAds: () -> Unit,
+    onRemoveArticleBottom: () -> Unit,
+    isRemoveElementMode: Boolean,
+    onToggleRemoveElement: () -> Unit,
+    onUndo: () -> Unit,
+    onMarquee: () -> Unit,
+    onPresets: () -> Unit,
+    isImageAdjusted: Boolean,
+    onToggleImageAdjust: () -> Unit,
+    isTextOnly: Boolean,
+    onToggleTextOnly: () -> Unit,
+    isGrayscale: Boolean,
+    onToggleGrayscale: () -> Unit,
+    isNoBackground: Boolean,
+    onToggleNoBackground: () -> Unit,
+    onConfigureSite: () -> Unit,
+    onSettings: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        tonalElevation = 2.dp,
+    ) {
+        // タイトル
+        Text(
+            text = stringResource(R.string.feature_panel_title),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+        )
+        @Suppress("DEPRECATION")
+        Divider(modifier = Modifier.padding(horizontal = 16.dp))
+
+        Column(
+            modifier = Modifier
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 8.dp, vertical = 8.dp)
+                .navigationBarsPadding()
+        ) {
+            // ホーム
+            FeaturePanelItem(icon = Icons.Filled.Home, label = stringResource(R.string.home), onClick = onHome)
+
+            // 印刷
+            FeaturePanelItem(icon = Icons.Filled.Print, label = stringResource(R.string.print), onClick = onPrint)
+
+            // URLを保存
+            if (menuActions.contains("action_save_url")) {
+                FeaturePanelItem(icon = Icons.Filled.Bookmark, label = stringResource(R.string.fab_save_url), onClick = onSaveUrl)
+            }
+
+            // 広告削除
+            if (menuActions.contains("action_remove_ads")) {
+                val adLabel = if (isAdsRemoved) stringResource(R.string.ad_block_stop_label) else stringResource(R.string.ad_block_label)
+                val adIcon = if (isAdsRemoved) Icons.Filled.Block else Icons.Filled.Delete
+                FeaturePanelItem(icon = adIcon, label = adLabel, onClick = onToggleAds)
+            }
+
+            // 記事下部を削除
+            if (menuActions.contains("action_remove_article_bottom")) {
+                FeaturePanelItem(icon = Icons.Filled.CleaningServices, label = stringResource(R.string.remove_article_bottom_label), onClick = onRemoveArticleBottom)
+            }
+
+            // 要素を削除
+            if (menuActions.contains("action_remove_elements")) {
+                val label = if (isRemoveElementMode) stringResource(R.string.exit_remove_element_mode) else stringResource(R.string.remove_element_label)
+                FeaturePanelItem(icon = Icons.Filled.Clear, label = label, onClick = onToggleRemoveElement)
+            }
+
+            // 元に戻す
+            if (menuActions.contains("action_undo")) {
+                FeaturePanelItem(icon = Icons.Filled.Undo, label = stringResource(R.string.undo_label), onClick = onUndo)
+            }
+
+            // ドラッグ選択
+            if (menuActions.contains("action_marquee")) {
+                FeaturePanelItem(icon = Icons.Filled.SelectAll, label = stringResource(R.string.marquee_label), onClick = onMarquee)
+            }
+
+            // プリセット
+            if (menuActions.contains("action_presets")) {
+                FeaturePanelItem(icon = Icons.Filled.List, label = stringResource(R.string.action_label_presets), onClick = onPresets)
+            }
+
+            // 画像調整
+            if (menuActions.contains("action_adjust_images")) {
+                val label = if (isImageAdjusted) stringResource(R.string.text_only_off_label) else stringResource(R.string.image_adjust_label)
+                FeaturePanelItem(icon = Icons.Filled.Image, label = label, onClick = onToggleImageAdjust)
+            }
+
+            // 文字のみ表示
+            if (menuActions.contains("action_text_only")) {
+                val label = if (isTextOnly) stringResource(R.string.text_only_off_label) else stringResource(R.string.text_only_on_label)
+                FeaturePanelItem(icon = Icons.Filled.Description, label = label, onClick = onToggleTextOnly)
+            }
+
+            // 白黒モード
+            if (menuActions.contains("action_grayscale")) {
+                val label = if (isGrayscale) stringResource(R.string.grayscale_off_label) else stringResource(R.string.grayscale_on_label)
+                FeaturePanelItem(icon = Icons.Filled.Contrast, label = label, onClick = onToggleGrayscale)
+            }
+
+            // 背景削除
+            if (menuActions.contains("action_remove_background")) {
+                val label = if (isNoBackground) stringResource(R.string.show_background_label) else stringResource(R.string.remove_background_label)
+                FeaturePanelItem(icon = Icons.Filled.Wallpaper, label = label, onClick = onToggleNoBackground)
+            }
+
+            @Suppress("DEPRECATION")
+            Divider(modifier = Modifier.padding(vertical = 4.dp, horizontal = 8.dp))
+
+            // このサイトを設定
+            FeaturePanelItem(icon = Icons.Filled.Tune, label = stringResource(R.string.configure_site_label), onClick = onConfigureSite)
+
+            // 設定
+            FeaturePanelItem(icon = Icons.Filled.Settings, label = stringResource(R.string.settings_label), onClick = onSettings)
+
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+    }
+}
+
+@Composable
+private fun FeaturePanelItem(
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit,
+) {
+    ListItem(
+        headlineContent = { Text(label, style = MaterialTheme.typography.bodyLarge) },
+        leadingContent = {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                tint = MaterialTheme.colorScheme.primary
+            )
+        },
+        modifier = Modifier.clickable(onClick = onClick)
+    )
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // サイト最適化ダイアログ

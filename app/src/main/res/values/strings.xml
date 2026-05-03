@@ -107,6 +107,8 @@
     <string name="configure_site_label">このサイトを設定</string>
     <string name="load_page_first_toast">ページを読み込んでから設定してください</string>
     <string name="settings_label">設定</string>
+    <string name="fab_open_panel">パネルで表示</string>
+    <string name="feature_panel_title">機能一覧</string>
     <string name="collapse_empty_label">空白を詰める</string>
 
     <!-- SiteProfileDialog -->
