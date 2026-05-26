@@ -41,6 +41,7 @@ import jp.webpdf.app.R
 import jp.webpdf.app.AdManager
 import jp.webpdf.app.data.SettingsRepository
 import jp.webpdf.app.data.PresetRepository
+import jp.webpdf.app.data.PdfHistoryRepository
 import jp.webpdf.app.data.SavedUrlRepository
 import jp.webpdf.app.data.SiteProfile
 import jp.webpdf.app.data.SiteProfileRepository
@@ -54,6 +55,7 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
     val settingsRepository = remember { SettingsRepository(context) }
     val presetRepository = remember { PresetRepository(context) }
     val savedUrlRepository = remember { SavedUrlRepository(context) }
+    val pdfHistoryRepository = remember { PdfHistoryRepository(context) }
     val siteProfileRepository = remember { SiteProfileRepository(context) }
 
     // サイトプロファイル用: 現在のページホスト (background thread から AtomicRef で安全にアクセス)
@@ -759,6 +761,10 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                                     .setMediaSize(android.print.PrintAttributes.MediaSize.ISO_A4)
                                     .setMinMargins(android.print.PrintAttributes.Margins.NO_MARGINS)
                                     .build()
+                                // 印刷履歴に記録（ページタイトルと現在のURL）
+                                val historyUrl = webViewRef?.url ?: currentUrl
+                                val historyTitle = webViewRef?.title?.ifBlank { null } ?: historyUrl
+                                pdfHistoryRepository.add(historyUrl, historyTitle)
                                 printManager.print(pageTitle, adapter, printAttributes)
                             }
                         }
@@ -978,6 +984,10 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                                     .setMediaSize(android.print.PrintAttributes.MediaSize.ISO_A4)
                                     .setMinMargins(android.print.PrintAttributes.Margins.NO_MARGINS)
                                     .build()
+                                // 印刷履歴に記録（ページタイトルと現在のURL）
+                                val historyUrl = webViewRef?.url ?: currentUrl
+                                val historyTitle = webViewRef?.title?.ifBlank { null } ?: historyUrl
+                                pdfHistoryRepository.add(historyUrl, historyTitle)
                                 printManager.print(pageTitle, adapter, printAttributes)
                             }
                         }

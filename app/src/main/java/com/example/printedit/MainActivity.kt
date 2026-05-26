@@ -82,7 +82,8 @@ class MainActivity : ComponentActivity() {
                             onNavigateBack = { currentScreen = Screen.Home }
                         )
                         is Screen.PdfList -> PdfListScreen(
-                            onNavigateBack = { currentScreen = Screen.Home }
+                            onNavigateBack = { currentScreen = Screen.Home },
+                            onOpenUrl = { url -> currentScreen = Screen.Browser(url) }
                         )
                     }
                 }

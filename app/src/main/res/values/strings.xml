@@ -157,15 +157,8 @@
     <string name="save_partial_msg">⚠️ %1$d件保存成功\n%2$d件は失敗しました</string>
     <string name="ok">OK</string>
 
-    <!-- PdfListScreen -->
-    <string name="pdf_list_title">保存済みPDF</string>
-    <string name="pdf_list_empty">保存されたPDFはありません</string>
-    <string name="pdf_list_empty_hint">印刷メニューからPDFを保存できます</string>
-    <string name="pdf_open_failed">PDFビューアが見つかりません</string>
-    <string name="pdf_delete_confirm_title">PDFを削除</string>
-    <string name="pdf_delete_confirm_msg">「%1$s」を削除しますか？</string>
-    <string name="pdf_delete_failed">削除に失敗しました</string>
-    <string name="pdf_delete_label">削除</string>
-    <string name="pdf_share_label">共有</string>
-    <string name="pdf_share_chooser">PDFを共有</string>
+    <!-- PdfListScreen (印刷履歴) -->
+    <string name="pdf_list_title">印刷履歴</string>
+    <string name="pdf_list_empty">印刷履歴がありません</string>
+    <string name="pdf_list_empty_hint">印刷ボタンを押したページがここに記録されます</string>
 </resources>
