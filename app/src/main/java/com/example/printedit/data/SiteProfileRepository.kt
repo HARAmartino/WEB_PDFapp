@@ -8,10 +8,16 @@ class SiteProfileRepository(context: Context) {
 
     fun getProfile(domain: String): SiteProfile? {
         if (domain.isBlank()) return null
-        val json = prefs.getString(normalize(domain), null) ?: return null
-        return try {
-            SiteProfile.fromJson(JSONObject(json))
-        } catch (_: Exception) { null }
+        val key = normalize(domain)
+        // 1. ユーザー設定を優先
+        prefs.getString(key, null)?.let { json ->
+            try {
+                return SiteProfile.fromJson(JSONObject(json))
+            } catch (_: Exception) { /* fall through to builtin */ }
+        }
+        // 2. ビルトインプロファイル: forceLoadLazyImages が React/Next.js の hydration を壊す等、
+        //    アプリ固有 JS が悪影響を及ぼすことが既知のサイトはデフォルトで安全側に倒す
+        return BUILTIN_PROFILES[key]
     }
 
     fun saveProfile(profile: SiteProfile) {
@@ -29,4 +35,15 @@ class SiteProfileRepository(context: Context) {
         }.sortedBy { it.domain }
 
     private fun normalize(domain: String): String = domain.lowercase().removePrefix("www.")
+
+    companion object {
+        // Yahoo!ニュース系は IntersectionObserver で記事を遅延ハイドレートしており、
+        // forceLoadLazyImagesJs が img.src を data-* から強制書き換えすると React の virtual DOM
+        // とズレて再レンダリング時にコンテナが空 (白飛び) になる。skipLazyLoader でこれを抑止する
+        private val BUILTIN_PROFILES = mapOf(
+            "news.yahoo.co.jp"    to SiteProfile(domain = "news.yahoo.co.jp",    skipLazyLoader = true),
+            "finance.yahoo.co.jp" to SiteProfile(domain = "finance.yahoo.co.jp", skipLazyLoader = true),
+            "sports.yahoo.co.jp"  to SiteProfile(domain = "sports.yahoo.co.jp",  skipLazyLoader = true),
+        )
+    }
 }
