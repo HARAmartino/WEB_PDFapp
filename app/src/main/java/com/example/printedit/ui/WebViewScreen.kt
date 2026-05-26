@@ -333,8 +333,18 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                                         val intent = Intent.parseUri(requestUrl, Intent.URI_INTENT_SCHEME).apply {
                                             component = null   // 特定コンポーネントへの直接起動を禁止
                                             selector = null    // セレクター経由の迂回を禁止
+                                            addCategory(Intent.CATEGORY_BROWSABLE)
                                         }
-                                        context.startActivity(intent)
+                                        // intent:// は browser_fallback_url を持つことがある
+                                        // (例: Yahoo!ニュースのヤフコメリンク)。
+                                        // 外部アプリ未インストール時はそちらを WebView で開く
+                                        val fallback = intent.getStringExtra("browser_fallback_url")
+                                        if (intent.resolveActivity(context.packageManager) != null) {
+                                            context.startActivity(intent)
+                                        } else if (!fallback.isNullOrBlank() &&
+                                            (fallback.startsWith("http://") || fallback.startsWith("https://"))) {
+                                            view?.loadUrl(fallback)
+                                        }
                                         true
                                     } catch (e: Exception) {
                                         Log.e("PrintEdit_Intent", "Failed to resolve intent for URL: $requestUrl", e)

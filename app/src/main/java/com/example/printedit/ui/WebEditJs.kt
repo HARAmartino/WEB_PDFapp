@@ -1328,32 +1328,8 @@ val menuFixJs = """
                     }
                 }
             });
-            
-            // Second pass: Find ANY element covering the whole screen that is fixed and translucent.
-            // Limit to direct children of body or #__next to avoid scanning thousands of deep divs.
-            var ww = window.innerWidth;
-            var wh = window.innerHeight;
-            var rootDivs = document.querySelectorAll('body > div, body > section, body > aside, body > form, #__next > div, #__nuxt > div');
-            rootDivs.forEach(function(el) {
-                var cs = window.getComputedStyle(el);
-                if (cs.position === 'fixed' || cs.position === 'absolute') {
-                    if (el.offsetWidth > ww * 0.8 && el.offsetHeight > wh * 0.8) {
-                        var bg = cs.backgroundColor;
-                        var m = bg ? bg.match(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/) : null;
-                        var alpha = m ? parseFloat(m[4]) : 1;
-                        var bf = cs.backdropFilter || cs.webkitBackdropFilter;
-                        
-                        if ((alpha > 0.05 && alpha < 0.98) || (bf && bf !== 'none')) {
-                            var r = m ? m[1] : 255;
-                            var g = m ? m[2] : 255;
-                            var b = m ? m[3] : 255;
-                            el.style.setProperty('background-color', 'rgb(' + r + ',' + g + ',' + b + ')', 'important');
-                            el.style.setProperty('backdrop-filter', 'none', 'important');
-                            el.style.setProperty('-webkit-backdrop-filter', 'none', 'important');
-                        }
-                    }
-                }
-            });
+            // 旧 Second pass (画面の 80% 以上を覆う root 直下の fixed/absolute を強制白塗り) は
+            // Next.js/Nuxt 系 SPA (Yahoo!ニュース等) の記事コンテナを誤検出して白飛びさせるため削除した
         } catch(e) {}
     }
     
