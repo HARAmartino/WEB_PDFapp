@@ -32,6 +32,7 @@ import com.google.android.gms.ads.AdView
 import androidx.compose.ui.res.stringResource
 import jp.webpdf.app.R
 import jp.webpdf.app.AdManager
+import jp.webpdf.app.data.PdfHistoryRepository
 import jp.webpdf.app.data.Preset
 import jp.webpdf.app.data.PresetRepository
 import jp.webpdf.app.data.SettingsRepository
@@ -219,6 +220,7 @@ fun BatchLinkPrintDialog(
 
     val settingsRepository = remember { SettingsRepository(context) }
     val presetRepository = remember { PresetRepository(context) }
+    val pdfHistoryRepository = remember { PdfHistoryRepository(context) }
     var presets by remember { mutableStateOf<List<Preset>>(emptyList()) }
 
     // Print Settings (defaults from caller's current state)
@@ -355,7 +357,12 @@ fun BatchLinkPrintDialog(
                 savePdfToDownloadsImpl(context, wv, filename)
             }
 
-            if (success) successCount++ else failCount++
+            if (success) {
+                successCount++
+                pdfHistoryRepository.add(link.url, title)
+            } else {
+                failCount++
+            }
             progress = index + 1
         }
 

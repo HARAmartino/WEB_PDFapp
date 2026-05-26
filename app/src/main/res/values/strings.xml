@@ -156,4 +156,9 @@
     <string name="save_failed_msg">❌ PDF保存に失敗しました（%1$d件）</string>
     <string name="save_partial_msg">⚠️ %1$d件保存成功\n%2$d件は失敗しました</string>
     <string name="ok">OK</string>
+
+    <!-- PdfListScreen (印刷履歴) -->
+    <string name="pdf_list_title">印刷履歴</string>
+    <string name="pdf_list_empty">印刷履歴がありません</string>
+    <string name="pdf_list_empty_hint">印刷ボタンを押したページがここに記録されます</string>
 </resources>

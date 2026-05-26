@@ -41,6 +41,7 @@ import jp.webpdf.app.R
 import jp.webpdf.app.AdManager
 import jp.webpdf.app.data.SettingsRepository
 import jp.webpdf.app.data.PresetRepository
+import jp.webpdf.app.data.PdfHistoryRepository
 import jp.webpdf.app.data.SavedUrlRepository
 import jp.webpdf.app.data.SiteProfile
 import jp.webpdf.app.data.SiteProfileRepository
@@ -54,6 +55,7 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
     val settingsRepository = remember { SettingsRepository(context) }
     val presetRepository = remember { PresetRepository(context) }
     val savedUrlRepository = remember { SavedUrlRepository(context) }
+    val pdfHistoryRepository = remember { PdfHistoryRepository(context) }
     val siteProfileRepository = remember { SiteProfileRepository(context) }
 
     // サイトプロファイル用: 現在のページホスト (background thread から AtomicRef で安全にアクセス)
@@ -89,6 +91,41 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
     var isAdsRemoved by remember { mutableStateOf(false) }
     var isImageAdjusted by remember { mutableStateOf(false) }
     var isRemoveElementMode by remember { mutableStateOf(false) }
+
+    // Mode activation history for undo (text_only / grayscale / no_background / image_adjust / ads_removed)
+    val modeHistory = remember { mutableStateListOf<String>() }
+
+    val doUndo = {
+        if (modeHistory.isNotEmpty()) {
+            when (modeHistory.removeLast()) {
+                "text_only" -> {
+                    isTextOnly = false
+                    webViewRef?.evaluateJavascript("if(window.toggleTextOnly) window.toggleTextOnly(false);", null)
+                }
+                "grayscale" -> {
+                    isGrayscale = false
+                    webViewRef?.evaluateJavascript("if(window.toggleGrayscale) window.toggleGrayscale(false);", null)
+                }
+                "no_background" -> {
+                    isNoBackground = false
+                    webViewRef?.evaluateJavascript("if(window.toggleNoBackground) window.toggleNoBackground(false);", null)
+                }
+                "image_adjust" -> {
+                    isImageAdjusted = false
+                    webViewRef?.evaluateJavascript("if(window.toggleImageAdjust) window.toggleImageAdjust(false);", null)
+                }
+                "ads_removed" -> {
+                    isAdsRemoved = false
+                    isAdsRemovedRef.set(false)
+                    webViewRef?.evaluateJavascript("if(window.peToggleRemoveAds) window.peToggleRemoveAds(false);", null)
+                    webViewRef?.reload()
+                }
+            }
+        } else {
+            webViewRef?.evaluateJavascript("if(window.peUndoLastAction) window.peUndoLastAction();", null)
+        }
+        Toast.makeText(context, context.getString(R.string.undo_done_toast), Toast.LENGTH_SHORT).show()
+    }
 
     // Navigation Handler
     BackHandler {
@@ -679,6 +716,14 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                                                 isAdsRemovedRef.set(preset.adsRemoved)
                                                 isImageAdjusted = preset.imageAdjusted
 
+                                                // Rebuild mode history to reflect preset's active modes
+                                                modeHistory.clear()
+                                                if (preset.textOnly) modeHistory.add("text_only")
+                                                if (preset.grayscale) modeHistory.add("grayscale")
+                                                if (preset.removeBackground) modeHistory.add("no_background")
+                                                if (preset.adsRemoved) modeHistory.add("ads_removed")
+                                                if (preset.imageAdjusted) modeHistory.add("image_adjust")
+
                                                 // Bug #3 fix: preset の値を直接使用（Compose state は recomposition 後に反映されるため）
                                                 webViewRef?.evaluateJavascript("if(window.toggleTextOnly) window.toggleTextOnly(${preset.textOnly});", null)
                                                 webViewRef?.evaluateJavascript("if(window.toggleGrayscale) window.toggleGrayscale(${preset.grayscale});", null)
@@ -769,6 +814,10 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                                     .setMediaSize(android.print.PrintAttributes.MediaSize.ISO_A4)
                                     .setMinMargins(android.print.PrintAttributes.Margins.NO_MARGINS)
                                     .build()
+                                // 印刷履歴に記録（ページタイトルと現在のURL）
+                                val historyUrl = webViewRef?.url ?: currentUrl
+                                val historyTitle = webViewRef?.title?.ifBlank { null } ?: historyUrl
+                                pdfHistoryRepository.add(historyUrl, historyTitle)
                                 printManager.print(pageTitle, adapter, printAttributes)
                             }
                         }
@@ -804,9 +853,11 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                             isAdsRemoved = newVal
                             isAdsRemovedRef.set(newVal)
                             if (newVal) {
+                                modeHistory.add("ads_removed")
                                 webViewRef?.evaluateJavascript("if(window.peToggleRemoveAds) window.peToggleRemoveAds(true);", null)
                                 Toast.makeText(context, context.getString(R.string.ad_block_enabled_toast), Toast.LENGTH_SHORT).show()
                             } else {
+                                modeHistory.removeAll { it == "ads_removed" }
                                 webViewRef?.evaluateJavascript("if(window.peToggleRemoveAds) window.peToggleRemoveAds(false);", null)
                                 Toast.makeText(context, context.getString(R.string.ad_block_stopped_toast), Toast.LENGTH_SHORT).show()
                                 webViewRef?.reload()
@@ -843,8 +894,7 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                     if (menuActions.contains("action_undo")) {
                         MiniFabItem(icon = Icons.Filled.Undo, label = stringResource(R.string.undo_label)) {
                             isFabExpanded = false
-                            webViewRef?.evaluateJavascript("if(window.peUndoLastAction) window.peUndoLastAction();", null)
-                            Toast.makeText(context, context.getString(R.string.undo_done_toast), Toast.LENGTH_SHORT).show()
+                            doUndo()
                         }
                     }
 
@@ -872,12 +922,13 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                     // 画像調整
                     if (menuActions.contains("action_adjust_images")) {
                         MiniFabItem(
-                            icon = Icons.Filled.Image, 
+                            icon = Icons.Filled.Image,
                             label = if (isImageAdjusted) stringResource(R.string.text_only_off_label) else stringResource(R.string.image_adjust_label)
                         ) {
                             isFabExpanded = false
                             val newVal = !isImageAdjusted
                             isImageAdjusted = newVal
+                            if (newVal) modeHistory.add("image_adjust") else modeHistory.removeAll { it == "image_adjust" }
                             webViewRef?.evaluateJavascript("if(window.toggleImageAdjust) window.toggleImageAdjust($newVal);", null)
                             if (newVal) {
                                 Toast.makeText(context, context.getString(R.string.image_adjusted_toast), Toast.LENGTH_SHORT).show()
@@ -894,6 +945,7 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                             isFabExpanded = false
                             val newVal = !isTextOnly
                             isTextOnly = newVal
+                            if (newVal) modeHistory.add("text_only") else modeHistory.removeAll { it == "text_only" }
                             webViewRef?.evaluateJavascript("if(window.toggleTextOnly) window.toggleTextOnly($newVal);", null)
                         }
                     }
@@ -907,6 +959,7 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                             isFabExpanded = false
                             val newVal = !isGrayscale
                             isGrayscale = newVal
+                            if (newVal) modeHistory.add("grayscale") else modeHistory.removeAll { it == "grayscale" }
                             webViewRef?.evaluateJavascript("if(window.toggleGrayscale) window.toggleGrayscale($newVal);", null)
                         }
                     }
@@ -920,6 +973,7 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                             isFabExpanded = false
                             val newVal = !isNoBackground
                             isNoBackground = newVal
+                            if (newVal) modeHistory.add("no_background") else modeHistory.removeAll { it == "no_background" }
                             webViewRef?.evaluateJavascript("if(window.toggleNoBackground) window.toggleNoBackground($newVal);", null)
                         }
                     }
@@ -988,6 +1042,10 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                                     .setMediaSize(android.print.PrintAttributes.MediaSize.ISO_A4)
                                     .setMinMargins(android.print.PrintAttributes.Margins.NO_MARGINS)
                                     .build()
+                                // 印刷履歴に記録（ページタイトルと現在のURL）
+                                val historyUrl = webViewRef?.url ?: currentUrl
+                                val historyTitle = webViewRef?.title?.ifBlank { null } ?: historyUrl
+                                pdfHistoryRepository.add(historyUrl, historyTitle)
                                 printManager.print(pageTitle, adapter, printAttributes)
                             }
                         }
@@ -1016,9 +1074,11 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                         isAdsRemoved = newVal
                         isAdsRemovedRef.set(newVal)
                         if (newVal) {
+                            modeHistory.add("ads_removed")
                             webViewRef?.evaluateJavascript("if(window.peToggleRemoveAds) window.peToggleRemoveAds(true);", null)
                             Toast.makeText(context, context.getString(R.string.ad_block_enabled_toast), Toast.LENGTH_SHORT).show()
                         } else {
+                            modeHistory.removeAll { it == "ads_removed" }
                             webViewRef?.evaluateJavascript("if(window.peToggleRemoveAds) window.peToggleRemoveAds(false);", null)
                             Toast.makeText(context, context.getString(R.string.ad_block_stopped_toast), Toast.LENGTH_SHORT).show()
                             webViewRef?.reload()
@@ -1041,8 +1101,7 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                     },
                     onUndo = {
                         showFeaturePanel = false
-                        webViewRef?.evaluateJavascript("if(window.peUndoLastAction) window.peUndoLastAction();", null)
-                        Toast.makeText(context, context.getString(R.string.undo_done_toast), Toast.LENGTH_SHORT).show()
+                        doUndo()
                     },
                     onMarquee = {
                         showFeaturePanel = false
@@ -1059,6 +1118,7 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                         showFeaturePanel = false
                         val newVal = !isImageAdjusted
                         isImageAdjusted = newVal
+                        if (newVal) modeHistory.add("image_adjust") else modeHistory.removeAll { it == "image_adjust" }
                         webViewRef?.evaluateJavascript("if(window.toggleImageAdjust) window.toggleImageAdjust($newVal);", null)
                         if (newVal) {
                             Toast.makeText(context, context.getString(R.string.image_adjusted_toast), Toast.LENGTH_SHORT).show()
@@ -1069,6 +1129,7 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                         showFeaturePanel = false
                         val newVal = !isTextOnly
                         isTextOnly = newVal
+                        if (newVal) modeHistory.add("text_only") else modeHistory.removeAll { it == "text_only" }
                         webViewRef?.evaluateJavascript("if(window.toggleTextOnly) window.toggleTextOnly($newVal);", null)
                     },
                     isGrayscale = isGrayscale,
@@ -1076,6 +1137,7 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                         showFeaturePanel = false
                         val newVal = !isGrayscale
                         isGrayscale = newVal
+                        if (newVal) modeHistory.add("grayscale") else modeHistory.removeAll { it == "grayscale" }
                         webViewRef?.evaluateJavascript("if(window.toggleGrayscale) window.toggleGrayscale($newVal);", null)
                     },
                     isNoBackground = isNoBackground,
@@ -1083,6 +1145,7 @@ fun WebViewScreen(url: String, onExit: () -> Unit = {}) {
                         showFeaturePanel = false
                         val newVal = !isNoBackground
                         isNoBackground = newVal
+                        if (newVal) modeHistory.add("no_background") else modeHistory.removeAll { it == "no_background" }
                         webViewRef?.evaluateJavascript("if(window.toggleNoBackground) window.toggleNoBackground($newVal);", null)
                     },
                     onConfigureSite = {

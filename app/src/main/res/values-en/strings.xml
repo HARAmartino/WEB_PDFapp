@@ -140,4 +140,9 @@
     <string name="save_failed_msg">❌ Failed to save PDF (%1$d items)</string>
     <string name="save_partial_msg">⚠️ %1$d saved\n%2$d failed</string>
     <string name="ok">OK</string>
+
+    <!-- PdfListScreen (print history) -->
+    <string name="pdf_list_title">Print History</string>
+    <string name="pdf_list_empty">No print history</string>
+    <string name="pdf_list_empty_hint">Pages you print will be recorded here</string>
 </resources>
