@@ -12,10 +12,11 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -94,6 +95,7 @@ private suspend fun fetchPageTitle(url: String): String? = withContext(Dispatche
 fun HomeScreen(
     onSearch: (String) -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenPdfList: () -> Unit = {},
     refreshKey: Any = Unit  // onNewIntent 等でリストを強制更新するためのキー
 ) {
     var searchText by remember { mutableStateOf("") }
@@ -110,6 +112,13 @@ fun HomeScreen(
             TopAppBar(
                 title = { },
                 actions = {
+                    IconButton(onClick = onOpenPdfList) {
+                        Icon(
+                            Icons.Default.FolderOpen,
+                            contentDescription = stringResource(R.string.pdf_list_title),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                     IconButton(onClick = onOpenSettings) {
                         Icon(Icons.Default.Settings, contentDescription = "Settings", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }

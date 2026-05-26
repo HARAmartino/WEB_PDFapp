@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import jp.webpdf.app.ui.WebViewScreen
 import jp.webpdf.app.ui.HomeScreen
 import jp.webpdf.app.ui.SettingsScreen
+import jp.webpdf.app.ui.PdfListScreen
 import jp.webpdf.app.ui.theme.PrintEditTheme
 import jp.webpdf.app.data.SavedUrlRepository
 
@@ -22,6 +23,7 @@ sealed class Screen {
     object Home : Screen()
     data class Browser(val url: String) : Screen()
     object Settings : Screen()
+    object PdfList : Screen()
 }
 
 class MainActivity : ComponentActivity() {
@@ -69,6 +71,7 @@ class MainActivity : ComponentActivity() {
                                 currentScreen = Screen.Browser(query)
                             },
                             onOpenSettings = { currentScreen = Screen.Settings },
+                            onOpenPdfList = { currentScreen = Screen.PdfList },
                             refreshKey = refreshCount
                         )
                         is Screen.Browser -> WebViewScreen(
@@ -76,6 +79,9 @@ class MainActivity : ComponentActivity() {
                             onExit = { currentScreen = Screen.Home }
                         )
                         is Screen.Settings -> SettingsScreen(
+                            onNavigateBack = { currentScreen = Screen.Home }
+                        )
+                        is Screen.PdfList -> PdfListScreen(
                             onNavigateBack = { currentScreen = Screen.Home }
                         )
                     }

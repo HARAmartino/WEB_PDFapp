@@ -140,4 +140,16 @@
     <string name="save_failed_msg">❌ Failed to save PDF (%1$d items)</string>
     <string name="save_partial_msg">⚠️ %1$d saved\n%2$d failed</string>
     <string name="ok">OK</string>
+
+    <!-- PdfListScreen -->
+    <string name="pdf_list_title">Saved PDFs</string>
+    <string name="pdf_list_empty">No saved PDFs</string>
+    <string name="pdf_list_empty_hint">Save PDFs from the Print menu in the browser</string>
+    <string name="pdf_open_failed">No PDF viewer found</string>
+    <string name="pdf_delete_confirm_title">Delete PDF</string>
+    <string name="pdf_delete_confirm_msg">Delete \"%1$s\"?</string>
+    <string name="pdf_delete_failed">Failed to delete</string>
+    <string name="pdf_delete_label">Delete</string>
+    <string name="pdf_share_label">Share</string>
+    <string name="pdf_share_chooser">Share PDF</string>
 </resources>
