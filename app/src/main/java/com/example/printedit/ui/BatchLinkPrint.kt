@@ -26,9 +26,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
-import com.google.android.gms.ads.AdRequest
-import com.google.android.gms.ads.AdSize
-import com.google.android.gms.ads.AdView
 import androidx.compose.ui.res.stringResource
 import jp.webpdf.app.R
 import jp.webpdf.app.AdManager
@@ -266,9 +263,9 @@ fun BatchLinkPrintDialog(
 
         val activity = context as? android.app.Activity
 
-        // 処理開始と同時にインタースティシャルを表示（処理は裏で続行）
+        // 処理開始と同時にリワード広告を表示（処理は裏で続行）
         if (activity != null) {
-            AdManager.showAdIfAvailable(activity) { /* 閉じても処理は独立して進む */ }
+            AdManager.showRewardAdIfAvailable(activity) { /* 閉じても処理は独立して進む */ }
         }
 
         val selectedLinks = links.filter { it.selected.value }
@@ -429,18 +426,6 @@ fun BatchLinkPrintDialog(
                             stringResource(R.string.items_complete, progress, total),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        // バナー広告（処理中に表示。×ボタン不要）
-                        // TODO: リリース前に本番IDに変更
-                        AndroidView(
-                            factory = { ctx ->
-                                AdView(ctx).apply {
-                                    setAdSize(AdSize.BANNER)
-                                    adUnitId = "ca-app-pub-3940256099942544/6300978111" // テスト用バナーID
-                                    loadAd(AdRequest.Builder().build())
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth()
                         )
                     } else {
                         // ---- Setup View ----
