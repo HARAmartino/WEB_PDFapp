@@ -12,8 +12,7 @@ import com.google.android.gms.ads.interstitial.InterstitialAd
 import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
 
 object AdManager {
-    // TODO: リリース前に本番 ID に差し替える: AdMob コンソールでインタースティシャル広告ユニットを作成
-    private const val AD_UNIT_ID = "ca-app-pub-3940256099942544/1033173712" // Google公式テスト用インタースティシャルID
+    private const val AD_UNIT_ID = "ca-app-pub-2076567302105537/6522426990"
     private const val TAG = "WEB_PDF_Ad"
 
     private var interstitialAd: InterstitialAd? = null
